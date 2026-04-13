@@ -23,17 +23,19 @@ public class VisitorMessage implements Serializable {
 
     private Long id; // 主键 ID
 
-    private Long sessionId; // 会话 ID
+    private Long sessionId; // 所属会话 ID
 
-    private Integer messageNo; // 消息序号
+    private Long userId; // 所属用户 ID
 
-    private String senderType; // 发送方类型
+    private Integer messageNo; // 会话内消息序号
 
-    private String messageType; // 消息类型
+    private String senderType; // 发送方类型：visitor/agent/system
+
+    private String messageType; // 消息类型：text/voice/image/video
 
     private String content; // 消息内容
 
-    private String voiceText; // 语音转文字内容
+    private String voiceText; // 语音转写文本
 
     private LocalDateTime createTime; // 创建时间
 }

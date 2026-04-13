@@ -16,6 +16,7 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -25,49 +26,36 @@ import java.util.Map;
  */
 public class HttpClientUtil {
 
-    static final  int TIMEOUT_MSEC = 5 * 1000;
+    static final int DEFAULT_TIMEOUT_MSEC = 600 * 1000;
 
     /**
      * 发送GET方式请求
-     * @param url
-     * @param paramMap
-     * @return
+     * @param url 请求地址
+     * @param paramMap 请求参数
+     * @return 响应结果
      */
-    public static String doGet(String url,Map<String,String> paramMap){
-        // 创建Httpclient对象
+    public static String doGet(String url, Map<String, String> paramMap) {
         CloseableHttpClient httpClient = HttpClients.createDefault();
-
-        String result = "";
         CloseableHttpResponse response = null;
+        String result = "";
 
-        try{
+        try {
             URIBuilder builder = new URIBuilder(url);
-            if(paramMap != null){
-                for (String key : paramMap.keySet()) {
-                    builder.addParameter(key,paramMap.get(key));
+            if (paramMap != null) {
+                for (Map.Entry<String, String> entry : paramMap.entrySet()) {
+                    builder.addParameter(entry.getKey(), entry.getValue());
                 }
             }
             URI uri = builder.build();
-
-            //创建GET请求
             HttpGet httpGet = new HttpGet(uri);
-
-            //发送请求
             response = httpClient.execute(httpGet);
-
-            //判断响应状态
-            if(response.getStatusLine().getStatusCode() == 200){
-                result = EntityUtils.toString(response.getEntity(),"UTF-8");
+            if (response.getStatusLine().getStatusCode() == 200) {
+                result = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
-        }finally {
-            try {
-                response.close();
-                httpClient.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        } finally {
+            closeQuietly(response, httpClient);
         }
 
         return result;
@@ -75,105 +63,117 @@ public class HttpClientUtil {
 
     /**
      * 发送POST方式请求
-     * @param url
-     * @param paramMap
-     * @return
-     * @throws IOException
+     * @param url 请求地址
+     * @param paramMap 请求参数
+     * @return 响应结果
+     * @throws IOException IO异常
      */
     public static String doPost(String url, Map<String, String> paramMap) throws IOException {
-        // 创建Httpclient对象
         CloseableHttpClient httpClient = HttpClients.createDefault();
         CloseableHttpResponse response = null;
         String resultString = "";
 
         try {
-            // 创建Http Post请求
             HttpPost httpPost = new HttpPost(url);
-
-            // 创建参数列表
             if (paramMap != null) {
-                List<NameValuePair> paramList = new ArrayList();
+                List<NameValuePair> paramList = new ArrayList<>();
                 for (Map.Entry<String, String> param : paramMap.entrySet()) {
                     paramList.add(new BasicNameValuePair(param.getKey(), param.getValue()));
                 }
-                // 模拟表单
-                UrlEncodedFormEntity entity = new UrlEncodedFormEntity(paramList);
-                httpPost.setEntity(entity);
+                httpPost.setEntity(new UrlEncodedFormEntity(paramList, StandardCharsets.UTF_8));
             }
 
-            httpPost.setConfig(builderRequestConfig());
-
-            // 执行http请求
+            httpPost.setConfig(builderRequestConfig(DEFAULT_TIMEOUT_MSEC, DEFAULT_TIMEOUT_MSEC, DEFAULT_TIMEOUT_MSEC));
             response = httpClient.execute(httpPost);
-
-            resultString = EntityUtils.toString(response.getEntity(), "UTF-8");
+            resultString = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw e;
         } finally {
-            try {
-                response.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            closeQuietly(response, httpClient);
         }
 
         return resultString;
     }
 
     /**
-     * 发送POST方式请求
-     * @param url
-     * @param paramMap
-     * @return
-     * @throws IOException
+     * 发送POST JSON方式请求
+     * @param url 请求地址
+     * @param paramMap 请求参数
+     * @return 响应结果
+     * @throws IOException IO异常
      */
     public static String doPost4Json(String url, Map<String, String> paramMap) throws IOException {
-        // 创建Httpclient对象
+        JSONObject jsonObject = new JSONObject();
+        if (paramMap != null) {
+            for (Map.Entry<String, String> param : paramMap.entrySet()) {
+                jsonObject.put(param.getKey(), param.getValue());
+            }
+        }
+        return doPost4Json(url, jsonObject.toJSONString());
+    }
+
+    /**
+     * 发送POST JSON方式请求
+     * @param url 请求地址
+     * @param jsonBody JSON请求体
+     * @return 响应结果
+     * @throws IOException IO异常
+     */
+    public static String doPost4Json(String url, String jsonBody) throws IOException {
+        return doPost4Json(url, jsonBody, DEFAULT_TIMEOUT_MSEC, DEFAULT_TIMEOUT_MSEC);
+    }
+
+    /**
+     * 发送POST JSON方式请求，并允许调用方覆盖超时
+     * @param url 请求地址
+     * @param jsonBody JSON请求体
+     * @param connectTimeoutMsec 连接超时毫秒数
+     * @param socketTimeoutMsec 读取超时毫秒数
+     * @return 响应结果
+     * @throws IOException IO异常
+     */
+    public static String doPost4Json(String url, String jsonBody, int connectTimeoutMsec, int socketTimeoutMsec) throws IOException {
         CloseableHttpClient httpClient = HttpClients.createDefault();
         CloseableHttpResponse response = null;
         String resultString = "";
 
         try {
-            // 创建Http Post请求
             HttpPost httpPost = new HttpPost(url);
-
-            if (paramMap != null) {
-                //构造json格式数据
-                JSONObject jsonObject = new JSONObject();
-                for (Map.Entry<String, String> param : paramMap.entrySet()) {
-                    jsonObject.put(param.getKey(),param.getValue());
-                }
-                StringEntity entity = new StringEntity(jsonObject.toString(),"utf-8");
-                //设置请求编码
-                entity.setContentEncoding("utf-8");
-                //设置数据类型
+            if (jsonBody != null) {
+                StringEntity entity = new StringEntity(jsonBody, StandardCharsets.UTF_8);
+                entity.setContentEncoding(StandardCharsets.UTF_8.name());
                 entity.setContentType("application/json");
                 httpPost.setEntity(entity);
             }
 
-            httpPost.setConfig(builderRequestConfig());
-
-            // 执行http请求
+            httpPost.setConfig(builderRequestConfig(connectTimeoutMsec, connectTimeoutMsec, socketTimeoutMsec));
             response = httpClient.execute(httpPost);
-
-            resultString = EntityUtils.toString(response.getEntity(), "UTF-8");
+            resultString = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw e;
         } finally {
-            try {
-                response.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            closeQuietly(response, httpClient);
         }
 
         return resultString;
     }
-    private static RequestConfig builderRequestConfig() {
+
+    private static RequestConfig builderRequestConfig(int connectTimeoutMsec, int connectionRequestTimeoutMsec, int socketTimeoutMsec) {
         return RequestConfig.custom()
-                .setConnectTimeout(TIMEOUT_MSEC)
-                .setConnectionRequestTimeout(TIMEOUT_MSEC)
-                .setSocketTimeout(TIMEOUT_MSEC).build();
+                .setConnectTimeout(connectTimeoutMsec)
+                .setConnectionRequestTimeout(connectionRequestTimeoutMsec)
+                .setSocketTimeout(socketTimeoutMsec)
+                .build();
     }
 
+    private static void closeQuietly(CloseableHttpResponse response, CloseableHttpClient httpClient) {
+        try {
+            if (response != null) {
+                response.close();
+            }
+            httpClient.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

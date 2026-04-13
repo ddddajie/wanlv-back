@@ -25,9 +25,9 @@ public class VisitorSession implements Serializable {
 
     private Long id; // 主键 ID
 
-    private String sessionCode; // 会话编码
+    private String sessionCode; // 会话唯一编码，用于后端与 Agent 关联会话
 
-    private String touristId; // 游客编号
+    private Long userId; // 游客/用户 ID
 
     private String userNickname; // 游客昵称
 
@@ -35,9 +35,21 @@ public class VisitorSession implements Serializable {
 
     private String gender; // 性别
 
-    private Long scenicAreaId; // 景区 ID
-
     private LocalDate reportDate; // 报告日期
+
+    private String sessionType; // 会话类型：CONSULTATION/SCENIC_SERVICE
+
+    private String sessionStatus; // 会话状态：ACTIVE/ENDED/ANALYZED
+
+    private Long scenicAreaId; // 景区 ID，可为空
+
+    private String scenicAreaSource; // 景区来源：UNSET/FRONTEND/USER_CONFIRMED/AGENT_INFERRED/SYSTEM
+
+    private Integer scenicAreaConfirmed; // 景区是否已确认：0-未确认，1-已确认
+
+    private String sourceType; // 会话入口来源：GLOBAL_CHAT/SCENIC_DETAIL/ROUTE_DETAIL 等
+
+    private String sourceId; // 来源业务 ID，如景区 ID、路线 ID 等
 
     private String attractionName; // 景点名称
 

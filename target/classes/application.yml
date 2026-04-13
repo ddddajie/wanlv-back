@@ -24,3 +24,8 @@ logging:
   level:
     com.example.wanlvback.mapper: debug
 
+wanlv:
+  agent:
+    base-url: http://127.0.0.1:8000
+    connect-timeout-ms: 600000
+    read-timeout-ms: 600000

@@ -19,6 +19,14 @@ public interface SysNormalUserMapper {
     SysNormalUser getByUsername(@Param("username") String username);
 
     /**
+     * 根据ID查询普通用户。
+     *
+     * @param id 用户 ID
+     * @return 普通用户信息
+     */
+    SysNormalUser getById(@Param("id") Long id);
+
+    /**
      * 新增普通用户。
      *
      * @param normalUser 普通用户实体
