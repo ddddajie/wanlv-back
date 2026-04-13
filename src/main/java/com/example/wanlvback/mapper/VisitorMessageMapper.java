@@ -6,27 +6,30 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 游客消息数据访问层
+ * 会话消息数据访问层。
  */
 public interface VisitorMessageMapper {
 
     /**
-     * 新增消息
+     * 插入一条会话消息。
+     *
      * @param visitorMessage 消息实体
      * @return 影响行数
      */
     int insert(VisitorMessage visitorMessage);
 
     /**
-     * 查询会话内最大消息序号
-     * @param sessionId 会话 ID
-     * @return 最大消息序号
+     * 查询某个会话当前最大的消息序号。
+     *
+     * @param sessionId 会话主键 ID
+     * @return 当前最大消息序号
      */
     Integer getMaxMessageNoBySessionId(@Param("sessionId") Long sessionId);
 
     /**
-     * 查询会话消息列表
-     * @param sessionId 会话 ID
+     * 按会话主键查询消息列表。
+     *
+     * @param sessionId 会话主键 ID
      * @return 消息列表
      */
     List<VisitorMessage> listBySessionId(@Param("sessionId") Long sessionId);

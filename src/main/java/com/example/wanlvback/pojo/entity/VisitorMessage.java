@@ -10,7 +10,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 游客消息实体
+ * 游客会话消息实体。
  */
 @Data
 @Builder
@@ -21,21 +21,22 @@ public class VisitorMessage implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private Long id; // 主键 ID
+    /**
+     * 数据库主键 ID。
+     */
+    private Long id;
 
-    private Long sessionId; // 所属会话 ID
+    /**
+     * 所属会话主键 ID。
+     * 这里存的是 visitor_session.id，不是 sessionCode。
+     */
+    private Long sessionId;
 
-    private Long userId; // 所属用户 ID
-
-    private Integer messageNo; // 会话内消息序号
-
-    private String senderType; // 发送方类型：visitor/agent/system
-
-    private String messageType; // 消息类型：text/voice/image/video
-
-    private String content; // 消息内容
-
-    private String voiceText; // 语音转写文本
-
-    private LocalDateTime createTime; // 创建时间
+    private Long userId;
+    private Integer messageNo;
+    private String senderType;
+    private String messageType;
+    private String content;
+    private String voiceText;
+    private LocalDateTime createTime;
 }
