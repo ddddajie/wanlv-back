@@ -4,6 +4,7 @@ import com.example.wanlvback.pojo.entity.VisitorSession;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 会话数据访问层。
@@ -12,42 +13,31 @@ public interface VisitorSessionMapper {
 
     /**
      * 根据用户 ID 和业务日期查询当天会话。
-     *
-     * @param userId 用户 ID
-     * @param reportDate 业务日期
-     * @return 会话信息
      */
     VisitorSession getByUserIdAndReportDate(@Param("userId") Long userId, @Param("reportDate") LocalDate reportDate);
 
     /**
      * 根据主键 ID 查询会话。
-     *
-     * @param id 会话主键 ID
-     * @return 会话信息
      */
     VisitorSession getById(@Param("id") Long id);
 
     /**
+     * 查询某一天的全部会话，用于跑日报定时任务。
+     */
+    List<VisitorSession> listByReportDate(@Param("reportDate") LocalDate reportDate);
+
+    /**
      * 新增一条会话记录。
-     *
-     * @param visitorSession 会话实体
-     * @return 影响行数
      */
     int insert(VisitorSession visitorSession);
 
     /**
      * 更新会话中的景区绑定信息。
-     *
-     * @param visitorSession 会话实体
-     * @return 影响行数
      */
     int updateScenicAreaInfo(VisitorSession visitorSession);
 
     /**
      * 更新会话分析结果。
-     *
-     * @param visitorSession 会话实体
-     * @return 影响行数
      */
     int updateAnalysisResult(VisitorSession visitorSession);
 }

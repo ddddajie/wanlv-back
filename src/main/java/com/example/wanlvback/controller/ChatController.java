@@ -5,6 +5,7 @@ import com.example.wanlvback.pojo.dto.SessionAnalysisTriggerDTO;
 import com.example.wanlvback.pojo.dto.SessionScenicAreaBindDTO;
 import com.example.wanlvback.pojo.vo.AgentSessionAnalysisVO;
 import com.example.wanlvback.pojo.vo.ChatAnswerVO;
+import com.example.wanlvback.pojo.vo.SessionAnalysisBatchVO;
 import com.example.wanlvback.result.Result;
 import com.example.wanlvback.service.ChatService;
 import lombok.extern.slf4j.Slf4j;
@@ -22,17 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class ChatController {
 
-    /**
-     * 注入聊天业务服务。
-     */
     @Autowired
     private ChatService chatService;
 
     /**
      * 处理用户向 Agent 发起的聊天请求。
-     *
-     * @param chatAskDTO 前端传入的提问参数
-     * @return Agent 回复结果
      */
     @PostMapping("/chat")
     public Result<ChatAnswerVO> chat(@RequestBody ChatAskDTO chatAskDTO) {
@@ -41,22 +36,33 @@ public class ChatController {
     }
 
     /**
-     * 触发指定会话的分析流程。
-     *
-     * @param triggerDTO 会话分析触发参数
-     * @return 会话分析结果
+     * 手动触发单个用户某一天的日报总结。
+     * 该接口仅允许超级管理员调用。
      */
     @PostMapping("/session-analysis")
     public Result<AgentSessionAnalysisVO> analyzeSession(@RequestBody SessionAnalysisTriggerDTO triggerDTO) {
-        log.info("收到会话分析请求，userId={}, reportDate={}", triggerDTO.getUserId(), triggerDTO.getReportDate());
+        log.info("收到单会话日报总结请求，operator={}, userId={}, reportDate={}",
+                triggerDTO == null ? null : triggerDTO.getOperatorUsername(),
+                triggerDTO == null ? null : triggerDTO.getUserId(),
+                triggerDTO == null ? null : triggerDTO.getReportDate());
         return Result.success(chatService.analyzeSession(triggerDTO));
     }
 
     /**
+     * 按日报日期批量触发当天所有会话的总结。
+     * 该接口仅允许超级管理员调用，定时任务也会复用同一套服务逻辑。
+     */
+    @PostMapping("/session-analysis/daily")
+    public Result<SessionAnalysisBatchVO> analyzeDailySessions(@RequestBody SessionAnalysisTriggerDTO triggerDTO) {
+        log.info("收到日报批量总结请求，operator={}, reportDate={}, forceReanalyze={}",
+                triggerDTO == null ? null : triggerDTO.getOperatorUsername(),
+                triggerDTO == null ? null : triggerDTO.getReportDate(),
+                triggerDTO == null ? null : triggerDTO.getForceReanalyze());
+        return Result.success(chatService.analyzeDailySessions(triggerDTO));
+    }
+
+    /**
      * 将当前会话与景区绑定。
-     *
-     * @param bindDTO 景区绑定参数
-     * @return 当前会话主键 ID
      */
     @PostMapping("/session/scenic-area/bind")
     public Result<Long> bindScenicArea(@RequestBody SessionScenicAreaBindDTO bindDTO) {

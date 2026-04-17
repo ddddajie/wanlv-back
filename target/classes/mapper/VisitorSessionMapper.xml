@@ -58,6 +58,13 @@
         limit 1
     </select>
 
+    <select id="listByReportDate" resultMap="VisitorSessionResultMap">
+        select *
+        from visitor_session
+        where report_date = #{reportDate}
+        order by id asc
+    </select>
+
     <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.VisitorSession" useGeneratedKeys="true" keyProperty="id">
         insert into visitor_session (
             session_code,
