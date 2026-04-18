@@ -5,13 +5,20 @@ import com.example.wanlvback.mapper.SysAdminUserMapper;
 import com.example.wanlvback.mapper.SysNormalUserMapper;
 import com.example.wanlvback.pojo.dto.AdminCreateDTO;
 import com.example.wanlvback.pojo.dto.AdminLoginDTO;
+import com.example.wanlvback.pojo.dto.AdminUserUpdateDTO;
 import com.example.wanlvback.pojo.dto.NormalUserLoginDTO;
 import com.example.wanlvback.pojo.dto.NormalUserRegisterDTO;
+import com.example.wanlvback.pojo.dto.NormalUserUpdateDTO;
 import com.example.wanlvback.pojo.entity.SysAdminUser;
 import com.example.wanlvback.pojo.entity.SysNormalUser;
+import com.example.wanlvback.pojo.vo.AdminUserVO;
+import com.example.wanlvback.pojo.vo.NormalUserVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
+import com.example.wanlvback.result.PageResult;
 import com.example.wanlvback.service.UserService;
 import com.example.wanlvback.utils.PasswordUtil;
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 用户业务实现类
@@ -114,7 +123,7 @@ public class UserServiceImpl implements UserService {
         }
 
         SysAdminUser existAdmin = sysAdminUserMapper.getByUsername(adminCreateDTO.getUsername());
-        if (existAdmin != null) {
+        if (existAdmin != null && !isDeleted(existAdmin.getDeleted())) {
             log.info("新增管理员失败，目标账号已存在，target={}", adminCreateDTO.getUsername());
             throw new BaseException("管理员账号已存在");
         }
@@ -146,7 +155,7 @@ public class UserServiceImpl implements UserService {
         log.info("普通用户发起注册，username={}", registerDTO.getUsername());
 
         SysNormalUser existUser = sysNormalUserMapper.getByUsername(registerDTO.getUsername());
-        if (existUser != null) {
+        if (existUser != null && !isDeleted(existUser.getDeleted())) {
             log.info("普通用户注册失败，账号已存在，username={}", registerDTO.getUsername());
             throw new BaseException("普通用户账号已存在");
         }
@@ -197,9 +206,159 @@ public class UserServiceImpl implements UserService {
         return buildNormalLoginVO(normalUser);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AdminUserVO updateAdminUser(AdminUserUpdateDTO updateDTO) {
+        checkUserId(updateDTO.getId(), "管理员ID不能为空");
+        ensureAdminUpdateContent(updateDTO);
+
+        SysAdminUser existAdmin = requireAdminUser(updateDTO.getId());
+        checkAdminUsernameDuplicate(updateDTO.getUsername(), existAdmin.getId());
+
+        SysAdminUser adminUser = new SysAdminUser();
+        adminUser.setId(updateDTO.getId());
+        adminUser.setUsername(updateDTO.getUsername());
+        adminUser.setPassword(encodeIfPresent(updateDTO.getPassword()));
+        adminUser.setRealName(updateDTO.getRealName());
+        adminUser.setPhone(updateDTO.getPhone());
+        adminUser.setEmail(updateDTO.getEmail());
+        adminUser.setAvatarUrl(updateDTO.getAvatarUrl());
+        adminUser.setRole(updateDTO.getRole());
+        adminUser.setScenicSpot(updateDTO.getScenicSpot());
+        adminUser.setStatus(updateDTO.getStatus());
+        adminUser.setRemark(updateDTO.getRemark());
+
+        sysAdminUserMapper.updateById(adminUser);
+        log.info("管理员信息更新成功，id={}", updateDTO.getId());
+        return buildAdminUserVO(requireAdminUser(updateDTO.getId()));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public NormalUserVO updateNormalUser(NormalUserUpdateDTO updateDTO) {
+        checkUserId(updateDTO.getId(), "普通用户ID不能为空");
+        ensureNormalUserUpdateContent(updateDTO);
+
+        SysNormalUser existUser = requireNormalUser(updateDTO.getId());
+        checkNormalUsernameDuplicate(updateDTO.getUsername(), existUser.getId());
+
+        SysNormalUser normalUser = new SysNormalUser();
+        normalUser.setId(updateDTO.getId());
+        normalUser.setUsername(updateDTO.getUsername());
+        normalUser.setPassword(encodeIfPresent(updateDTO.getPassword()));
+        normalUser.setNickname(updateDTO.getNickname());
+        normalUser.setPhone(updateDTO.getPhone());
+        normalUser.setEmail(updateDTO.getEmail());
+        normalUser.setAvatarUrl(updateDTO.getAvatarUrl());
+        normalUser.setGender(updateDTO.getGender());
+        normalUser.setAge(updateDTO.getAge());
+        normalUser.setInterestTags(updateDTO.getInterestTags());
+        normalUser.setStatus(updateDTO.getStatus());
+
+        sysNormalUserMapper.updateById(normalUser);
+        log.info("普通用户信息更新成功，id={}", updateDTO.getId());
+        return buildNormalUserVO(requireNormalUser(updateDTO.getId()));
+    }
+
+    @Override
+    public AdminUserVO getAdminUserById(Long id) {
+        checkUserId(id, "管理员ID不能为空");
+        return buildAdminUserVO(requireAdminUser(id));
+    }
+
+    @Override
+    public NormalUserVO getNormalUserById(Long id) {
+        checkUserId(id, "普通用户ID不能为空");
+        return buildNormalUserVO(requireNormalUser(id));
+    }
+
+    @Override
+    public PageResult pageAdminUsers(Integer pageNum, Integer pageSize) {
+        int validPageNum = normalizePageNum(pageNum);
+        int validPageSize = normalizePageSize(pageSize);
+
+        PageHelper.startPage(validPageNum, validPageSize);
+        Page<SysAdminUser> page = sysAdminUserMapper.listAll();
+        return new PageResult(page.getTotal(), page.getResult());
+    }
+
+    @Override
+    public PageResult pageNormalUsers(Integer pageNum, Integer pageSize) {
+        int validPageNum = normalizePageNum(pageNum);
+        int validPageSize = normalizePageSize(pageSize);
+
+        PageHelper.startPage(validPageNum, validPageSize);
+        Page<SysNormalUser> page = sysNormalUserMapper.listAll();
+        return new PageResult(page.getTotal(),page.getResult());
+    }
+
     private void checkLoginParam(String username, String password, String errorMessage) {
         if (!StringUtils.hasText(username) || !StringUtils.hasText(password)) {
             throw new BaseException(errorMessage);
+        }
+    }
+
+    private void checkUserId(Long id, String errorMessage) {
+        if (id == null) {
+            throw new BaseException(errorMessage);
+        }
+    }
+
+    private int normalizePageNum(Integer pageNum) {
+        return pageNum == null || pageNum < 1 ? 1 : pageNum;
+    }
+
+    private int normalizePageSize(Integer pageSize) {
+        return pageSize == null || pageSize < 1 ? 10 : pageSize;
+    }
+
+    private void ensureAdminUpdateContent(AdminUserUpdateDTO updateDTO) {
+        if (!StringUtils.hasText(updateDTO.getUsername())
+                && !StringUtils.hasText(updateDTO.getPassword())
+                && !StringUtils.hasText(updateDTO.getRealName())
+                && !StringUtils.hasText(updateDTO.getPhone())
+                && !StringUtils.hasText(updateDTO.getEmail())
+                && !StringUtils.hasText(updateDTO.getAvatarUrl())
+                && !StringUtils.hasText(updateDTO.getRole())
+                && !StringUtils.hasText(updateDTO.getScenicSpot())
+                && updateDTO.getStatus() == null
+                && !StringUtils.hasText(updateDTO.getRemark())) {
+            throw new BaseException("管理员更新内容不能为空");
+        }
+    }
+
+    private void ensureNormalUserUpdateContent(NormalUserUpdateDTO updateDTO) {
+        if (!StringUtils.hasText(updateDTO.getUsername())
+                && !StringUtils.hasText(updateDTO.getPassword())
+                && !StringUtils.hasText(updateDTO.getNickname())
+                && !StringUtils.hasText(updateDTO.getPhone())
+                && !StringUtils.hasText(updateDTO.getEmail())
+                && !StringUtils.hasText(updateDTO.getAvatarUrl())
+                && updateDTO.getGender() == null
+                && updateDTO.getAge() == null
+                && !StringUtils.hasText(updateDTO.getInterestTags())
+                && updateDTO.getStatus() == null) {
+            throw new BaseException("普通用户更新内容不能为空");
+        }
+    }
+
+    private void checkAdminUsernameDuplicate(String username, Long currentId) {
+        if (!StringUtils.hasText(username)) {
+            return;
+        }
+        SysAdminUser adminUser = sysAdminUserMapper.getByUsername(username);
+        if (adminUser != null && !adminUser.getId().equals(currentId) && !isDeleted(adminUser.getDeleted())) {
+            throw new BaseException("管理员账号已存在");
+        }
+    }
+
+    private void checkNormalUsernameDuplicate(String username, Long currentId) {
+        if (!StringUtils.hasText(username)) {
+            return;
+        }
+        SysNormalUser normalUser = sysNormalUserMapper.getByUsername(username);
+        if (normalUser != null && !normalUser.getId().equals(currentId) && !isDeleted(normalUser.getDeleted())) {
+            throw new BaseException("普通用户账号已存在");
         }
     }
 
@@ -251,6 +410,10 @@ public class UserServiceImpl implements UserService {
         log.info("普通用户旧版明文密码已升级，username={}", normalUser.getUsername());
     }
 
+    private String encodeIfPresent(String password) {
+        return StringUtils.hasText(password) ? PasswordUtil.encode(password) : null;
+    }
+
     private boolean isDeleted(Integer deleted) {
         return deleted != null && deleted == 1;
     }
@@ -261,6 +424,22 @@ public class UserServiceImpl implements UserService {
 
     private String defaultIfBlank(String value, String defaultValue) {
         return StringUtils.hasText(value) ? value : defaultValue;
+    }
+
+    private SysAdminUser requireAdminUser(Long id) {
+        SysAdminUser adminUser = sysAdminUserMapper.getById(id);
+        if (adminUser == null || isDeleted(adminUser.getDeleted())) {
+            throw new BaseException("管理员用户不存在");
+        }
+        return adminUser;
+    }
+
+    private SysNormalUser requireNormalUser(Long id) {
+        SysNormalUser normalUser = sysNormalUserMapper.getById(id);
+        if (normalUser == null || isDeleted(normalUser.getDeleted())) {
+            throw new BaseException("普通用户不存在");
+        }
+        return normalUser;
     }
 
     private UserLoginVO buildAdminLoginVO(SysAdminUser adminUser) {
@@ -284,6 +463,42 @@ public class UserServiceImpl implements UserService {
                 .role("normal_user")
                 .status(normalUser.getStatus())
                 .lastLoginTime(normalUser.getLastLoginTime())
+                .build();
+    }
+
+    private AdminUserVO buildAdminUserVO(SysAdminUser adminUser) {
+        return AdminUserVO.builder()
+                .id(adminUser.getId())
+                .username(adminUser.getUsername())
+                .realName(adminUser.getRealName())
+                .phone(adminUser.getPhone())
+                .email(adminUser.getEmail())
+                .avatarUrl(adminUser.getAvatarUrl())
+                .role(adminUser.getRole())
+                .scenicSpot(adminUser.getScenicSpot())
+                .status(adminUser.getStatus())
+                .lastLoginTime(adminUser.getLastLoginTime())
+                .remark(adminUser.getRemark())
+                .createTime(adminUser.getCreateTime())
+                .updateTime(adminUser.getUpdateTime())
+                .build();
+    }
+
+    private NormalUserVO buildNormalUserVO(SysNormalUser normalUser) {
+        return NormalUserVO.builder()
+                .id(normalUser.getId())
+                .username(normalUser.getUsername())
+                .nickname(normalUser.getNickname())
+                .phone(normalUser.getPhone())
+                .email(normalUser.getEmail())
+                .avatarUrl(normalUser.getAvatarUrl())
+                .gender(normalUser.getGender())
+                .age(normalUser.getAge())
+                .interestTags(normalUser.getInterestTags())
+                .status(normalUser.getStatus())
+                .lastLoginTime(normalUser.getLastLoginTime())
+                .createTime(normalUser.getCreateTime())
+                .updateTime(normalUser.getUpdateTime())
                 .build();
     }
 }

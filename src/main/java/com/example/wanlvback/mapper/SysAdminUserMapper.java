@@ -1,9 +1,11 @@
 package com.example.wanlvback.mapper;
 
 import com.example.wanlvback.pojo.entity.SysAdminUser;
+import com.github.pagehelper.Page;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 管理员用户数据访问层
@@ -19,12 +21,28 @@ public interface SysAdminUserMapper {
     SysAdminUser getByUsername(@Param("username") String username);
 
     /**
+     * 根据主键 ID 查询管理员。
+     *
+     * @param id 管理员 ID
+     * @return 管理员信息
+     */
+    SysAdminUser getById(@Param("id") Long id);
+
+    /**
      * 新增管理员。
      *
      * @param adminUser 管理员实体
      * @return 影响行数
      */
     int insert(SysAdminUser adminUser);
+
+    /**
+     * 根据主键 ID 动态更新管理员信息。
+     *
+     * @param adminUser 管理员实体
+     * @return 影响行数
+     */
+    int updateById(SysAdminUser adminUser);
 
     /**
      * 更新管理员密码。
@@ -43,4 +61,11 @@ public interface SysAdminUserMapper {
      * @return 影响行数
      */
     int updateLastLoginTime(@Param("id") Long id, @Param("lastLoginTime") LocalDateTime lastLoginTime);
+
+    /**
+     * 查询全部未删除管理员。
+     *
+     * @return 管理员列表
+     */
+    Page<SysAdminUser> listAll();
 }

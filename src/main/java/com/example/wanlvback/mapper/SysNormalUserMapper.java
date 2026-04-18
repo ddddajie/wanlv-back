@@ -1,12 +1,14 @@
 package com.example.wanlvback.mapper;
 
 import com.example.wanlvback.pojo.entity.SysNormalUser;
+import com.github.pagehelper.Page;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * 普通用户数据访问层。
+ * 普通用户数据访问层
  */
 public interface SysNormalUserMapper {
 
@@ -35,6 +37,14 @@ public interface SysNormalUserMapper {
     int insert(SysNormalUser normalUser);
 
     /**
+     * 根据主键 ID 动态更新普通用户信息。
+     *
+     * @param normalUser 普通用户实体
+     * @return 影响行数
+     */
+    int updateById(SysNormalUser normalUser);
+
+    /**
      * 根据主键 ID 更新用户密码。
      *
      * @param id 用户主键 ID
@@ -51,4 +61,13 @@ public interface SysNormalUserMapper {
      * @return 影响行数
      */
     int updateLastLoginTime(@Param("id") Long id, @Param("lastLoginTime") LocalDateTime lastLoginTime);
+
+    /**
+     * 查询全部未删除普通用户。
+     *
+     * @return 普通用户列表
+     */
+    Page<SysNormalUser> listAll();
+
+    Page<SysNormalUser> pageQuery();
 }
