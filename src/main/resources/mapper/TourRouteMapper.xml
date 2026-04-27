@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.TourRouteMapper">
+
+    <resultMap id="TourRouteResultMap" type="com.example.wanlvback.pojo.entity.TourRoute">
+        <id column="id" property="id"/>
+        <result column="scenic_area_id" property="scenicAreaId"/>
+        <result column="route_name" property="routeName"/>
+        <result column="route_type" property="routeType"/>
+        <result column="suitable_crowd" property="suitableCrowd"/>
+        <result column="duration_minutes" property="durationMinutes"/>
+        <result column="distance_meters" property="distanceMeters"/>
+        <result column="description" property="description"/>
+        <result column="recommended_reason" property="recommendedReason"/>
+        <result column="status" property="status"/>
+        <result column="deleted" property="deleted"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="MapRouteVOResultMap" type="com.example.wanlvback.pojo.vo.MapRouteVO">
+        <id column="id" property="id"/>
+        <result column="scenic_area_id" property="scenicAreaId"/>
+        <result column="route_name" property="routeName"/>
+        <result column="route_type" property="routeType"/>
+        <result column="suitable_crowd" property="suitableCrowd"/>
+        <result column="duration_minutes" property="durationMinutes"/>
+        <result column="distance_meters" property="distanceMeters"/>
+        <result column="description" property="description"/>
+        <result column="recommended_reason" property="recommendedReason"/>
+        <result column="geojson" property="geojson"/>
+        <result column="geo_version" property="geoVersion"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,
+        scenic_area_id,
+        route_name,
+        route_type,
+        suitable_crowd,
+        duration_minutes,
+        distance_meters,
+        description,
+        recommended_reason,
+        status,
+        deleted,
+        create_by,
+        create_time,
+        update_by,
+        update_time
+    </sql>
+
+    <select id="getById" resultMap="TourRouteResultMap">
+        select <include refid="Base_Column_List"/>
+        from tour_route
+        where id = #{id}
+          and deleted = 0
+        limit 1
+    </select>
+
+    <select id="getActiveById" resultMap="TourRouteResultMap">
+        select <include refid="Base_Column_List"/>
+        from tour_route
+        where id = #{id}
+          and status = 1
+          and deleted = 0
+        limit 1
+    </select>
+
+    <select id="pageQuery" resultMap="TourRouteResultMap">
+        select <include refid="Base_Column_List"/>
+        from tour_route
+        where deleted = 0
+        <if test="scenicAreaId != null">
+            and scenic_area_id = #{scenicAreaId}
+        </if>
+        <if test="routeName != null and routeName != ''">
+            and route_name like concat('%', #{routeName}, '%')
+        </if>
+        <if test="status != null">
+            and status = #{status}
+        </if>
+        order by create_time desc, id desc
+    </select>
+
+    <select id="listActiveByScenicAreaId" resultMap="TourRouteResultMap">
+        select <include refid="Base_Column_List"/>
+        from tour_route
+        where scenic_area_id = #{scenicAreaId}
+          and status = 1
+          and deleted = 0
+        order by create_time desc, id desc
+    </select>
+
+    <select id="listMapRoutesByScenicAreaId" resultMap="MapRouteVOResultMap">
+        select tr.id,
+               tr.scenic_area_id,
+               tr.route_name,
+               tr.route_type,
+               tr.suitable_crowd,
+               tr.duration_minutes,
+               tr.distance_meters,
+               tr.description,
+               tr.recommended_reason,
+               trg.geojson,
+               trg.version as geo_version
+        from tour_route tr
+                 left join (
+            select a.route_id, a.geojson, a.version
+            from tour_route_geo a
+                     inner join (
+                select route_id, max(version) as max_version
+                from tour_route_geo
+                where status = 1
+                group by route_id
+            ) b on a.route_id = b.route_id and a.version = b.max_version
+            where a.status = 1
+        ) trg on tr.id = trg.route_id
+        where tr.scenic_area_id = #{scenicAreaId}
+          and tr.status = 1
+          and tr.deleted = 0
+        order by tr.create_time desc, tr.id desc
+    </select>
+
+    <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.TourRoute" useGeneratedKeys="true" keyProperty="id">
+        insert into tour_route (
+            scenic_area_id,
+            route_name,
+            route_type,
+            suitable_crowd,
+            duration_minutes,
+            distance_meters,
+            description,
+            recommended_reason,
+            status,
+            deleted,
+            create_by,
+            create_time,
+            update_by,
+            update_time
+        ) values (
+            #{scenicAreaId},
+            #{routeName},
+            #{routeType},
+            #{suitableCrowd},
+            #{durationMinutes},
+            #{distanceMeters},
+            #{description},
+            #{recommendedReason},
+            #{status},
+            #{deleted},
+            #{createBy},
+            #{createTime},
+            #{updateBy},
+            #{updateTime}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.example.wanlvback.pojo.entity.TourRoute">
+        update tour_route
+        <set>
+            <if test="scenicAreaId != null">
+                scenic_area_id = #{scenicAreaId},
+            </if>
+            <if test="routeName != null and routeName != ''">
+                route_name = #{routeName},
+            </if>
+            <if test="routeType != null">
+                route_type = #{routeType},
+            </if>
+            <if test="suitableCrowd != null">
+                suitable_crowd = #{suitableCrowd},
+            </if>
+            <if test="durationMinutes != null">
+                duration_minutes = #{durationMinutes},
+            </if>
+            <if test="distanceMeters != null">
+                distance_meters = #{distanceMeters},
+            </if>
+            <if test="description != null">
+                description = #{description},
+            </if>
+            <if test="recommendedReason != null">
+                recommended_reason = #{recommendedReason},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            <if test="updateBy != null">
+                update_by = #{updateBy},
+            </if>
+            update_time = now()
+        </set>
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+</mapper>

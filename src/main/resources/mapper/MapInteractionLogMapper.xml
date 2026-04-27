@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.MapInteractionLogMapper">
+
+    <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.MapInteractionLog" useGeneratedKeys="true" keyProperty="id">
+        insert into map_interaction_log (
+            user_id,
+            session_id,
+            scenic_area_id,
+            spot_id,
+            route_id,
+            action_type,
+            action_source,
+            agent_result_json,
+            remark,
+            create_time
+        ) values (
+            #{userId},
+            #{sessionId},
+            #{scenicAreaId},
+            #{spotId},
+            #{routeId},
+            #{actionType},
+            #{actionSource},
+            #{agentResultJson},
+            #{remark},
+            #{createTime}
+        )
+    </insert>
+
+</mapper>

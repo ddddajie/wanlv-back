@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.TourRouteSpotMapper">
+
+    <resultMap id="RouteSpotDetailVOResultMap" type="com.example.wanlvback.pojo.vo.RouteSpotDetailVO">
+        <id column="relation_id" property="relationId"/>
+        <result column="route_id" property="routeId"/>
+        <result column="spot_id" property="spotId"/>
+        <result column="sort_no" property="sortNo"/>
+        <result column="stay_duration_minutes" property="stayDurationMinutes"/>
+        <result column="is_must_visit" property="isMustVisit"/>
+        <result column="remark" property="remark"/>
+        <result column="spot_name" property="spotName"/>
+        <result column="poi_type" property="poiType"/>
+        <result column="icon_type" property="iconType"/>
+        <result column="spot_code" property="spotCode"/>
+        <result column="short_intro" property="shortIntro"/>
+        <result column="description" property="description"/>
+        <result column="cover_image_url" property="coverImageUrl"/>
+        <result column="audio_url" property="audioUrl"/>
+        <result column="video_url" property="videoUrl"/>
+        <result column="knowledge_doc_id" property="knowledgeDocId"/>
+        <result column="recommended_level" property="recommendedLevel"/>
+        <result column="longitude" property="longitude"/>
+        <result column="latitude" property="latitude"/>
+    </resultMap>
+
+    <select id="listDetailByRouteId" resultMap="RouteSpotDetailVOResultMap">
+        select trs.id as relation_id,
+               trs.route_id,
+               trs.spot_id,
+               trs.sort_no,
+               trs.stay_duration_minutes,
+               trs.is_must_visit,
+               trs.remark,
+               ss.spot_name,
+               ss.poi_type,
+               ss.icon_type,
+               ss.spot_code,
+               ss.short_intro,
+               ss.description,
+               ss.cover_image_url,
+               ss.audio_url,
+               ss.video_url,
+               ss.knowledge_doc_id,
+               ss.recommended_level,
+               ss.longitude,
+               ss.latitude
+        from tour_route_spot trs
+                 left join scenic_spot ss on trs.spot_id = ss.id
+        where trs.route_id = #{routeId}
+          and ss.deleted = 0
+          and ss.status = 1
+        order by trs.sort_no asc, trs.id asc
+    </select>
+
+    <delete id="deleteByRouteId">
+        delete
+        from tour_route_spot
+        where route_id = #{routeId}
+    </delete>
+
+    <insert id="batchInsert">
+        insert into tour_route_spot (
+            route_id,
+            spot_id,
+            sort_no,
+            stay_duration_minutes,
+            is_must_visit,
+            remark,
+            create_time
+        ) values
+        <foreach collection="items" item="item" separator=",">
+            (
+            #{item.routeId},
+            #{item.spotId},
+            #{item.sortNo},
+            #{item.stayDurationMinutes},
+            #{item.isMustVisit},
+            #{item.remark},
+            #{item.createTime}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

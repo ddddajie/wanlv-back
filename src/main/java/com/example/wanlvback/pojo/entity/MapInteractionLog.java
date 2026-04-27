@@ -10,28 +10,34 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 路线景点关联实体
+ * 地图交互日志实体
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TourRouteSpot implements Serializable {
+public class MapInteractionLog implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     private Long id; // 主键ID
 
-    private Long routeId; // 路线ID
+    private Long userId; // 用户ID
+
+    private String sessionId; // 会话ID
+
+    private Long scenicAreaId; // 景区ID
 
     private Long spotId; // 景点ID
 
-    private Integer sortNo; // 排序号
+    private Long routeId; // 路线ID
 
-    private Integer stayDurationMinutes; // 停留分钟数
+    private String actionType; // 操作类型
 
-    private Integer isMustVisit; // 是否必游点
+    private String actionSource; // 触发来源
+
+    private String agentResultJson; // Agent返回结果JSON
 
     private String remark; // 备注
 

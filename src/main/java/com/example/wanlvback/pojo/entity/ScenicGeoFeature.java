@@ -10,30 +10,32 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 路线景点关联实体
+ * 景区地图空间要素实体
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TourRouteSpot implements Serializable {
+public class ScenicGeoFeature implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     private Long id; // 主键ID
 
-    private Long routeId; // 路线ID
+    private Long scenicAreaId; // 所属景区ID
 
-    private Long spotId; // 景点ID
+    private String featureName; // 区域名称
 
-    private Integer sortNo; // 排序号
+    private String featureType; // 要素类型
 
-    private Integer stayDurationMinutes; // 停留分钟数
+    private String geojson; // 区域GeoJSON数据
 
-    private Integer isMustVisit; // 是否必游点
+    private Integer status; // 状态
 
-    private String remark; // 备注
+    private Integer deleted; // 逻辑删除
 
     private LocalDateTime createTime; // 创建时间
+
+    private LocalDateTime updateTime; // 更新时间
 }

@@ -168,7 +168,6 @@
                create_time,
                update_time
         from sys_admin_user
-        where deleted = 0
         order by create_time desc, id desc
     </select>
 

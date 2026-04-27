@@ -1,26 +1,18 @@
-package com.example.wanlvback.pojo.entity;
+package com.example.wanlvback.pojo.vo;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
-import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 景点实体
+ * 景点返回对象
  */
 @Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ScenicSpot implements Serializable {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
+public class ScenicSpotVO implements Serializable {
 
     private Long id; // 主键ID
 
@@ -60,13 +52,7 @@ public class ScenicSpot implements Serializable {
 
     private Integer status; // 状态
 
-    private Integer deleted; // 删除标记
-
-    private Long createBy; // 创建人ID
-
     private LocalDateTime createTime; // 创建时间
-
-    private Long updateBy; // 更新人ID
 
     private LocalDateTime updateTime; // 更新时间
 }

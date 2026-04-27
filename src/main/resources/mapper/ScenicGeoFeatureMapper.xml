@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.ScenicGeoFeatureMapper">
+
+    <resultMap id="ScenicGeoFeatureResultMap" type="com.example.wanlvback.pojo.entity.ScenicGeoFeature">
+        <id column="id" property="id"/>
+        <result column="scenic_area_id" property="scenicAreaId"/>
+        <result column="feature_name" property="featureName"/>
+        <result column="feature_type" property="featureType"/>
+        <result column="geojson" property="geojson"/>
+        <result column="status" property="status"/>
+        <result column="deleted" property="deleted"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="getById" resultMap="ScenicGeoFeatureResultMap">
+        select id, scenic_area_id, feature_name, feature_type, geojson, status, deleted, create_time, update_time
+        from scenic_geo_feature
+        where id = #{id}
+          and deleted = 0
+        limit 1
+    </select>
+
+    <select id="listByScenicAreaId" resultMap="ScenicGeoFeatureResultMap">
+        select id, scenic_area_id, feature_name, feature_type, geojson, status, deleted, create_time, update_time
+        from scenic_geo_feature
+        where scenic_area_id = #{scenicAreaId}
+          and deleted = 0
+        order by create_time desc, id desc
+    </select>
+
+    <select id="listActiveByScenicAreaId" resultMap="ScenicGeoFeatureResultMap">
+        select id, scenic_area_id, feature_name, feature_type, geojson, status, deleted, create_time, update_time
+        from scenic_geo_feature
+        where scenic_area_id = #{scenicAreaId}
+          and status = 1
+          and deleted = 0
+        order by create_time desc, id desc
+    </select>
+
+    <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.ScenicGeoFeature" useGeneratedKeys="true" keyProperty="id">
+        insert into scenic_geo_feature (
+            scenic_area_id,
+            feature_name,
+            feature_type,
+            geojson,
+            status,
+            deleted,
+            create_time,
+            update_time
+        ) values (
+            #{scenicAreaId},
+            #{featureName},
+            #{featureType},
+            #{geojson},
+            #{status},
+            #{deleted},
+            #{createTime},
+            #{updateTime}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.example.wanlvback.pojo.entity.ScenicGeoFeature">
+        update scenic_geo_feature
+        <set>
+            <if test="scenicAreaId != null">
+                scenic_area_id = #{scenicAreaId},
+            </if>
+            <if test="featureName != null and featureName != ''">
+                feature_name = #{featureName},
+            </if>
+            <if test="featureType != null and featureType != ''">
+                feature_type = #{featureType},
+            </if>
+            <if test="geojson != null and geojson != ''">
+                geojson = #{geojson},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            <if test="deleted != null">
+                deleted = #{deleted},
+            </if>
+            update_time = now()
+        </set>
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+</mapper>

@@ -25,6 +25,12 @@ logging:
     com.example.wanlvback.mapper: debug
 
 wanlv:
+  internal:
+    enabled: true
+    token: ${WANLV_INTERNAL_TOKEN:change-this-internal-token}
+    header-name: X-Internal-Token
+    allow-loopback: true
+    allow-private-network: true
   agent:
     base-url: http://127.0.0.1:8000
     connect-timeout-ms: 600000

@@ -10,13 +10,13 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 路线景点关联实体
+ * 路线几何数据实体
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TourRouteSpot implements Serializable {
+public class TourRouteGeo implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -25,15 +25,13 @@ public class TourRouteSpot implements Serializable {
 
     private Long routeId; // 路线ID
 
-    private Long spotId; // 景点ID
+    private String geojson; // 路线GeoJSON数据
 
-    private Integer sortNo; // 排序号
+    private Integer version; // 版本号
 
-    private Integer stayDurationMinutes; // 停留分钟数
-
-    private Integer isMustVisit; // 是否必游点
-
-    private String remark; // 备注
+    private Integer status; // 状态
 
     private LocalDateTime createTime; // 创建时间
+
+    private LocalDateTime updateTime; // 更新时间
 }
