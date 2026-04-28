@@ -1,5 +1,4 @@
 *.mbtiles
-*.mbtiles
 *.pmtiles
 *.osm.pbf
 src/main/resources/Martin/*.mbtiles

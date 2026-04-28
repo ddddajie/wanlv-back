@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.ScenicAreaMapper">
+
+    <resultMap id="ScenicAreaResultMap" type="com.example.wanlvback.pojo.entity.ScenicArea">
+        <id column="id" property="id"/>
+        <result column="scenic_name" property="scenicName"/>
+        <result column="scenic_code" property="scenicCode"/>
+        <result column="province" property="province"/>
+        <result column="city" property="city"/>
+        <result column="district" property="district"/>
+        <result column="address" property="address"/>
+        <result column="longitude" property="longitude"/>
+        <result column="latitude" property="latitude"/>
+        <result column="description" property="description"/>
+        <result column="opening_hours" property="openingHours"/>
+        <result column="contact_phone" property="contactPhone"/>
+        <result column="cover_image_url" property="coverImageUrl"/>
+        <result column="map_base_image_url" property="mapBaseImageUrl"/>
+        <result column="map_center_lng" property="mapCenterLng"/>
+        <result column="map_center_lat" property="mapCenterLat"/>
+        <result column="default_zoom" property="defaultZoom"/>
+        <result column="min_zoom" property="minZoom"/>
+        <result column="max_zoom" property="maxZoom"/>
+        <result column="map_bounds_json" property="mapBoundsJson"/>
+        <result column="status" property="status"/>
+        <result column="deleted" property="deleted"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,
+        scenic_name,
+        scenic_code,
+        province,
+        city,
+        district,
+        address,
+        longitude,
+        latitude,
+        description,
+        opening_hours,
+        contact_phone,
+        cover_image_url,
+        map_base_image_url,
+        map_center_lng,
+        map_center_lat,
+        default_zoom,
+        min_zoom,
+        max_zoom,
+        map_bounds_json,
+        status,
+        deleted,
+        create_by,
+        create_time,
+        update_by,
+        update_time
+    </sql>
+
+    <select id="getById" resultMap="ScenicAreaResultMap">
+        select <include refid="Base_Column_List"/>
+        from scenic_area
+        where id = #{id}
+          and deleted = 0
+        limit 1
+    </select>
+
+    <select id="getActiveById" resultMap="ScenicAreaResultMap">
+        select <include refid="Base_Column_List"/>
+        from scenic_area
+        where id = #{id}
+          and status = 1
+          and deleted = 0
+        limit 1
+    </select>
+
+    <select id="pageQuery" resultMap="ScenicAreaResultMap">
+        select <include refid="Base_Column_List"/>
+        from scenic_area
+        where deleted = 0
+        <if test="scenicName != null and scenicName != ''">
+            and scenic_name like concat('%', #{scenicName}, '%')
+        </if>
+        <if test="status != null">
+            and status = #{status}
+        </if>
+        order by create_time desc, id desc
+    </select>
+
+    <select id="listAllActive" resultMap="ScenicAreaResultMap">
+        select <include refid="Base_Column_List"/>
+        from scenic_area
+        where status = 1
+          and deleted = 0
+        order by create_time desc, id desc
+    </select>
+
+    <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.ScenicArea" useGeneratedKeys="true" keyProperty="id">
+        insert into scenic_area (
+            scenic_name,
+            scenic_code,
+            province,
+            city,
+            district,
+            address,
+            longitude,
+            latitude,
+            description,
+            opening_hours,
+            contact_phone,
+            cover_image_url,
+            map_base_image_url,
+            map_center_lng,
+            map_center_lat,
+            default_zoom,
+            min_zoom,
+            max_zoom,
+            map_bounds_json,
+            status,
+            deleted,
+            create_by,
+            create_time,
+            update_by,
+            update_time
+        ) values (
+            #{scenicName},
+            #{scenicCode},
+            #{province},
+            #{city},
+            #{district},
+            #{address},
+            #{longitude},
+            #{latitude},
+            #{description},
+            #{openingHours},
+            #{contactPhone},
+            #{coverImageUrl},
+            #{mapBaseImageUrl},
+            #{mapCenterLng},
+            #{mapCenterLat},
+            #{defaultZoom},
+            #{minZoom},
+            #{maxZoom},
+            #{mapBoundsJson},
+            #{status},
+            #{deleted},
+            #{createBy},
+            #{createTime},
+            #{updateBy},
+            #{updateTime}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.example.wanlvback.pojo.entity.ScenicArea">
+        update scenic_area
+        <set>
+            <if test="scenicName != null and scenicName != ''">
+                scenic_name = #{scenicName},
+            </if>
+            <if test="scenicCode != null and scenicCode != ''">
+                scenic_code = #{scenicCode},
+            </if>
+            <if test="province != null">
+                province = #{province},
+            </if>
+            <if test="city != null">
+                city = #{city},
+            </if>
+            <if test="district != null">
+                district = #{district},
+            </if>
+            <if test="address != null">
+                address = #{address},
+            </if>
+            <if test="longitude != null">
+                longitude = #{longitude},
+            </if>
+            <if test="latitude != null">
+                latitude = #{latitude},
+            </if>
+            <if test="description != null">
+                description = #{description},
+            </if>
+            <if test="openingHours != null">
+                opening_hours = #{openingHours},
+            </if>
+            <if test="contactPhone != null">
+                contact_phone = #{contactPhone},
+            </if>
+            <if test="coverImageUrl != null">
+                cover_image_url = #{coverImageUrl},
+            </if>
+            <if test="mapBaseImageUrl != null">
+                map_base_image_url = #{mapBaseImageUrl},
+            </if>
+            <if test="mapCenterLng != null">
+                map_center_lng = #{mapCenterLng},
+            </if>
+            <if test="mapCenterLat != null">
+                map_center_lat = #{mapCenterLat},
+            </if>
+            <if test="defaultZoom != null">
+                default_zoom = #{defaultZoom},
+            </if>
+            <if test="minZoom != null">
+                min_zoom = #{minZoom},
+            </if>
+            <if test="maxZoom != null">
+                max_zoom = #{maxZoom},
+            </if>
+            <if test="mapBoundsJson != null">
+                map_bounds_json = #{mapBoundsJson},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            <if test="updateBy != null">
+                update_by = #{updateBy},
+            </if>
+            update_time = now()
+        </set>
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+</mapper>

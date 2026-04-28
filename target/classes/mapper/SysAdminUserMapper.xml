@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.SysAdminUserMapper">
+
+    <resultMap id="SysAdminUserResultMap" type="com.example.wanlvback.pojo.entity.SysAdminUser">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="real_name" property="realName"/>
+        <result column="phone" property="phone"/>
+        <result column="email" property="email"/>
+        <result column="avatar_url" property="avatarUrl"/>
+        <result column="role" property="role"/>
+        <result column="scenic_spot" property="scenicSpot"/>
+        <result column="status" property="status"/>
+        <result column="last_login_time" property="lastLoginTime"/>
+        <result column="remark" property="remark"/>
+        <result column="deleted" property="deleted"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="getByUsername" resultMap="SysAdminUserResultMap">
+        select id,
+               username,
+               password,
+               real_name,
+               phone,
+               email,
+               avatar_url,
+               role,
+               scenic_spot,
+               status,
+               last_login_time,
+               remark,
+               deleted,
+               create_time,
+               update_time
+        from sys_admin_user
+        where username = #{username}
+        limit 1
+    </select>
+
+    <select id="getById" resultMap="SysAdminUserResultMap">
+        select id,
+               username,
+               password,
+               real_name,
+               phone,
+               email,
+               avatar_url,
+               role,
+               scenic_spot,
+               status,
+               last_login_time,
+               remark,
+               deleted,
+               create_time,
+               update_time
+        from sys_admin_user
+        where id = #{id}
+        limit 1
+    </select>
+
+    <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.SysAdminUser" useGeneratedKeys="true" keyProperty="id">
+        insert into sys_admin_user (
+            username,
+            password,
+            real_name,
+            phone,
+            email,
+            avatar_url,
+            role,
+            scenic_spot,
+            status,
+            last_login_time,
+            remark,
+            deleted,
+            create_time,
+            update_time
+        ) values (
+            #{username},
+            #{password},
+            #{realName},
+            #{phone},
+            #{email},
+            #{avatarUrl},
+            #{role},
+            #{scenicSpot},
+            #{status},
+            #{lastLoginTime},
+            #{remark},
+            #{deleted},
+            #{createTime},
+            #{updateTime}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.example.wanlvback.pojo.entity.SysAdminUser">
+        update sys_admin_user
+        <set>
+            <if test="username != null and username != ''">
+                username = #{username},
+            </if>
+            <if test="password != null and password != ''">
+                password = #{password},
+            </if>
+            <if test="realName != null and realName != ''">
+                real_name = #{realName},
+            </if>
+            <if test="phone != null and phone != ''">
+                phone = #{phone},
+            </if>
+            <if test="email != null and email != ''">
+                email = #{email},
+            </if>
+            <if test="avatarUrl != null and avatarUrl != ''">
+                avatar_url = #{avatarUrl},
+            </if>
+            <if test="role != null and role != ''">
+                role = #{role},
+            </if>
+            <if test="scenicSpot != null and scenicSpot != ''">
+                scenic_spot = #{scenicSpot},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            <if test="remark != null and remark != ''">
+                remark = #{remark},
+            </if>
+            update_time = now()
+        </set>
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+    <update id="updatePasswordById">
+        update sys_admin_user
+        set password = #{password},
+            update_time = now()
+        where id = #{id}
+    </update>
+
+    <update id="updateLastLoginTime">
+        update sys_admin_user
+        set last_login_time = #{lastLoginTime},
+            update_time = now()
+        where id = #{id}
+    </update>
+
+    <select id="listAll" resultMap="SysAdminUserResultMap">
+        select id,
+               username,
+               password,
+               real_name,
+               phone,
+               email,
+               avatar_url,
+               role,
+               scenic_spot,
+               status,
+               last_login_time,
+               remark,
+               deleted,
+               create_time,
+               update_time
+        from sys_admin_user
+        order by create_time desc, id desc
+    </select>
+
+</mapper>

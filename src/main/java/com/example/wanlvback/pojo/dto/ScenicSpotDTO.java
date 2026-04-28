@@ -45,6 +45,10 @@ public class ScenicSpotDTO implements Serializable {
 
     private Integer recommendedLevel; // 推荐等级
 
+    private Long createBy; // 创建人ID
+
+    private Long updateBy; // 更新人ID
+
     private Integer sortNo; // 排序号
 
     private Integer status; // 状态

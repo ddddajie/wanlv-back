@@ -1,5 +1,9 @@
 package com.example.wanlvback.service.impl;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONException;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.example.wanlvback.exception.BaseException;
 import com.example.wanlvback.mapper.MapInteractionLogMapper;
 import com.example.wanlvback.mapper.ScenicAreaMapper;
@@ -9,6 +13,7 @@ import com.example.wanlvback.mapper.TourRouteGeoMapper;
 import com.example.wanlvback.mapper.TourRouteMapper;
 import com.example.wanlvback.mapper.TourRouteSpotMapper;
 import com.example.wanlvback.pojo.dto.MapInteractionLogDTO;
+import com.example.wanlvback.pojo.dto.RouteGeoGenerateDTO;
 import com.example.wanlvback.pojo.dto.ScenicAreaDTO;
 import com.example.wanlvback.pojo.dto.ScenicGeoFeatureDTO;
 import com.example.wanlvback.pojo.dto.ScenicSpotDTO;
@@ -25,6 +30,8 @@ import com.example.wanlvback.pojo.entity.TourRouteSpot;
 import com.example.wanlvback.pojo.vo.MapInitVO;
 import com.example.wanlvback.pojo.vo.MapRouteVO;
 import com.example.wanlvback.pojo.vo.RouteDetailVO;
+import com.example.wanlvback.pojo.vo.RouteGeoGenerateVO;
+import com.example.wanlvback.pojo.vo.RouteGeoGenerateWarningVO;
 import com.example.wanlvback.pojo.vo.RouteSpotDetailVO;
 import com.example.wanlvback.pojo.vo.ScenicAreaVO;
 import com.example.wanlvback.pojo.vo.ScenicGeoFeatureVO;
@@ -43,9 +50,19 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -54,6 +71,27 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class MapServiceImpl implements MapService {
+
+    private static final String FEATURE_TYPE_BOUNDARY = "BOUNDARY";
+    private static final String FEATURE_TYPE_ZONE = "ZONE";
+    private static final String FEATURE_TYPE_RESTRICTED = "RESTRICTED";
+    private static final String FEATURE_TYPE_ENTRANCE_AREA = "ENTRANCE_AREA";
+    private static final String FEATURE_TYPE_ROAD = "ROAD";
+    private static final String GEOMETRY_TYPE_POINT = "POINT";
+    private static final String GEOMETRY_TYPE_LINE = "LINE";
+    private static final String GEOMETRY_TYPE_POLYGON = "POLYGON";
+    private static final String FALLBACK_DIRECT_SEGMENT = "DIRECT_SEGMENT";
+    private static final String FALLBACK_FAIL = "FAIL";
+    private static final double DEFAULT_SNAP_TOLERANCE_METERS = 80.0;
+    private static final double NODE_MERGE_TOLERANCE_METERS = 3.0;
+    private static final double EARTH_RADIUS_METERS = 6371008.8;
+    private static final Set<String> SUPPORTED_FEATURE_TYPES = Set.of(
+            FEATURE_TYPE_BOUNDARY,
+            FEATURE_TYPE_ZONE,
+            FEATURE_TYPE_RESTRICTED,
+            FEATURE_TYPE_ENTRANCE_AREA,
+            FEATURE_TYPE_ROAD
+    );
 
     @Autowired
     private ScenicAreaMapper scenicAreaMapper;
@@ -261,6 +299,83 @@ public class MapServiceImpl implements MapService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public RouteGeoGenerateVO generateRouteGeo(Long routeId, RouteGeoGenerateDTO routeGeoGenerateDTO) {
+        if (routeId == null) {
+            throw new BaseException("路线ID不能为空");
+        }
+        RouteGeoGenerateDTO request = routeGeoGenerateDTO == null ? new RouteGeoGenerateDTO() : routeGeoGenerateDTO;
+        TourRoute route = requireTourRoute(routeId);
+        List<RouteSpotDetailVO> spots = tourRouteSpotMapper.listDetailByRouteId(routeId);
+        if (CollectionUtils.isEmpty(spots) || spots.size() < 2) {
+            throw new BaseException("路线至少需要配置 2 个有效景点后才能自动生成轨迹。");
+        }
+        validateRouteSpotCoordinates(spots);
+
+        double snapToleranceMeters = request.getSnapToleranceMeters() == null
+                ? DEFAULT_SNAP_TOLERANCE_METERS
+                : request.getSnapToleranceMeters();
+        if (snapToleranceMeters < 0) {
+            throw new BaseException("景点吸附容忍距离不能小于0");
+        }
+        String fallbackStrategy = normalizeFallbackStrategy(request.getFallbackStrategy());
+        Set<String> roadTypes = normalizeRoadTypes(request.getRoadTypes());
+        List<RouteGeoGenerateWarningVO> warnings = new ArrayList<>();
+        RoadNetwork roadNetwork = buildRoadNetwork(route.getScenicAreaId(), roadTypes, warnings);
+        if (roadNetwork.segments.isEmpty()) {
+            throw new BaseException("当前景区没有可用于计算的道路");
+        }
+
+        List<SnappedSpot> snappedSpots = new ArrayList<>();
+        for (RouteSpotDetailVO spot : spots) {
+            SnappedSpot snappedSpot = snapSpotToRoad(spot, roadNetwork);
+            if (snappedSpot.distanceMeters() > snapToleranceMeters) {
+                if (FALLBACK_FAIL.equals(fallbackStrategy)) {
+                    throw new BaseException("景点无法吸附到道路，且兜底策略为 FAIL");
+                }
+                warnings.add(RouteGeoGenerateWarningVO.builder()
+                        .code("SPOT_SNAP_DISTANCE_EXCEEDED")
+                        .message(String.format(Locale.ROOT, "景点“%s”距离最近道路 %.1fm，超过建议阈值 %.1fm，已吸附到最近道路点。",
+                                spot.getSpotName(), snappedSpot.distanceMeters(), snapToleranceMeters))
+                        .spotId(spot.getSpotId())
+                        .spotName(spot.getSpotName())
+                        .distanceMeters(roundDouble(snappedSpot.distanceMeters(), 2))
+                        .build());
+            }
+            snappedSpots.add(snappedSpot);
+        }
+
+        PathBuildResult pathBuildResult = buildRoutePath(snappedSpots, roadNetwork, fallbackStrategy, warnings);
+        if (pathBuildResult.coordinates().size() < 2) {
+            throw new BaseException("路线至少需要 2 个不同轨迹点后才能生成 GeoJSON");
+        }
+        double distanceMeters = calculateLineDistance(pathBuildResult.coordinates());
+        JSONObject geojson = buildGeneratedGeoJson(route, request, pathBuildResult.coordinates(), distanceMeters);
+        Integer version = resolveGeoVersionForGenerate(routeId, request.getVersion());
+        Long routeGeoId = null;
+        boolean saved = Boolean.TRUE.equals(request.getSaveAsVersion());
+        if (saved) {
+            TourRouteGeo savedGeo = saveGeneratedRouteGeo(routeId, geojson, version, request);
+            routeGeoId = savedGeo.getId();
+            updateRouteDistance(routeId, distanceMeters);
+        }
+
+        return RouteGeoGenerateVO.builder()
+                .routeId(routeId)
+                .scenicAreaId(route.getScenicAreaId())
+                .routeName(route.getRouteName())
+                .version(version)
+                .saved(saved)
+                .routeGeoId(routeGeoId)
+                .distanceMeters(roundDouble(distanceMeters, 2))
+                .spotCount(spots.size())
+                .roadSegmentCount(pathBuildResult.roadSegmentCount())
+                .geojson(geojson)
+                .warnings(warnings)
+                .build();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public TourRouteGeoVO updateTourRouteGeo(TourRouteGeoDTO tourRouteGeoDTO) {
         if (tourRouteGeoDTO == null || tourRouteGeoDTO.getId() == null) {
             throw new BaseException("路线几何数据ID不能为空");
@@ -295,6 +410,7 @@ public class MapServiceImpl implements MapService {
     @Transactional(rollbackFor = Exception.class)
     public ScenicGeoFeatureVO createScenicGeoFeature(ScenicGeoFeatureDTO scenicGeoFeatureDTO) {
         validateGeoFeatureForCreate(scenicGeoFeatureDTO);
+        normalizeAndValidateGeoFeature(scenicGeoFeatureDTO);
         requireScenicArea(scenicGeoFeatureDTO.getScenicAreaId());
 
         LocalDateTime now = LocalDateTime.now();
@@ -321,6 +437,7 @@ public class MapServiceImpl implements MapService {
         if (scenicGeoFeatureDTO.getScenicAreaId() != null) {
             requireScenicArea(scenicGeoFeatureDTO.getScenicAreaId());
         }
+        normalizeAndValidateGeoFeatureForUpdate(scenicGeoFeatureDTO, existFeature);
 
         ScenicGeoFeature scenicGeoFeature = new ScenicGeoFeature();
         BeanUtils.copyProperties(scenicGeoFeatureDTO, scenicGeoFeature);
@@ -379,6 +496,393 @@ public class MapServiceImpl implements MapService {
         mapInteractionLog.setCreateTime(LocalDateTime.now());
         mapInteractionLogMapper.insert(mapInteractionLog);
         return mapInteractionLog.getId();
+    }
+
+    private void validateRouteSpotCoordinates(List<RouteSpotDetailVO> spots) {
+        for (RouteSpotDetailVO spot : spots) {
+            if (spot.getLongitude() == null || spot.getLatitude() == null) {
+                throw new BaseException("路线中存在缺少经纬度的景点");
+            }
+            double lng = spot.getLongitude().doubleValue();
+            double lat = spot.getLatitude().doubleValue();
+            if (lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+                throw new BaseException("路线中存在经纬度不合法的景点");
+            }
+        }
+    }
+
+    private String normalizeFallbackStrategy(String fallbackStrategy) {
+        if (!StringUtils.hasText(fallbackStrategy)) {
+            return FALLBACK_DIRECT_SEGMENT;
+        }
+        String strategy = normalizeCode(fallbackStrategy);
+        if (!FALLBACK_DIRECT_SEGMENT.equals(strategy) && !FALLBACK_FAIL.equals(strategy)) {
+            throw new BaseException("兜底策略不支持");
+        }
+        return strategy;
+    }
+
+    private Set<String> normalizeRoadTypes(List<String> roadTypes) {
+        if (CollectionUtils.isEmpty(roadTypes)) {
+            return Collections.emptySet();
+        }
+        return roadTypes.stream()
+                .filter(StringUtils::hasText)
+                .map(this::normalizeCode)
+                .collect(Collectors.toSet());
+    }
+
+    private RoadNetwork buildRoadNetwork(Long scenicAreaId, Set<String> roadTypes, List<RouteGeoGenerateWarningVO> warnings) {
+        RoadNetwork roadNetwork = new RoadNetwork();
+        List<ScenicGeoFeature> roadFeatures = scenicGeoFeatureMapper.listActiveByScenicAreaId(scenicAreaId)
+                .stream()
+                .filter(feature -> FEATURE_TYPE_ROAD.equalsIgnoreCase(feature.getFeatureType()))
+                .filter(feature -> CollectionUtils.isEmpty(roadTypes)
+                        || roadTypes.contains(feature.getFeatureSubType() == null ? "" : normalizeCode(feature.getFeatureSubType())))
+                .collect(Collectors.toList());
+        if (CollectionUtils.isEmpty(roadFeatures)) {
+            return roadNetwork;
+        }
+
+        for (ScenicGeoFeature feature : roadFeatures) {
+            List<List<GeoPoint>> lines = parseRoadGeoJson(feature, warnings);
+            for (List<GeoPoint> line : lines) {
+                for (int i = 0; i < line.size() - 1; i++) {
+                    GeoPoint from = line.get(i);
+                    GeoPoint to = line.get(i + 1);
+                    if (samePoint(from, to)) {
+                        continue;
+                    }
+                    int fromNodeId = roadNetwork.findOrCreateNode(from);
+                    int toNodeId = roadNetwork.findOrCreateNode(to);
+                    roadNetwork.addEdge(fromNodeId, toNodeId);
+                    roadNetwork.segments.add(new RoadSegment(from, to, fromNodeId, toNodeId));
+                }
+            }
+        }
+        return roadNetwork;
+    }
+
+    private List<List<GeoPoint>> parseRoadGeoJson(ScenicGeoFeature feature, List<RouteGeoGenerateWarningVO> warnings) {
+        try {
+            JSONObject geoJson = JSON.parseObject(feature.getGeojson());
+            List<List<GeoPoint>> lines = new ArrayList<>();
+            collectLineStrings(geoJson, lines);
+            if (lines.isEmpty()) {
+                warnings.add(RouteGeoGenerateWarningVO.builder()
+                        .code("ROAD_GEOMETRY_IGNORED")
+                        .message("道路要素“" + feature.getFeatureName() + "”不是可计算的线几何，已忽略。")
+                        .featureId(feature.getId())
+                        .featureName(feature.getFeatureName())
+                        .build());
+            }
+            return lines;
+        } catch (JSONException | ClassCastException ex) {
+            throw new BaseException("道路 GeoJSON 无法解析");
+        }
+    }
+
+    private void collectLineStrings(JSONObject geoJson, List<List<GeoPoint>> lines) {
+        String type = geoJson.getString("type");
+        if ("Feature".equalsIgnoreCase(type)) {
+            JSONObject geometry = geoJson.getJSONObject("geometry");
+            if (geometry != null) {
+                collectLineStrings(geometry, lines);
+            }
+            return;
+        }
+        if ("FeatureCollection".equalsIgnoreCase(type)) {
+            JSONArray features = geoJson.getJSONArray("features");
+            if (features == null) {
+                return;
+            }
+            for (int i = 0; i < features.size(); i++) {
+                JSONObject feature = features.getJSONObject(i);
+                if (feature != null) {
+                    collectLineStrings(feature, lines);
+                }
+            }
+            return;
+        }
+        if ("LineString".equalsIgnoreCase(type)) {
+            List<GeoPoint> line = parseLineStringCoordinates(geoJson.getJSONArray("coordinates"));
+            if (line.size() >= 2) {
+                lines.add(line);
+            }
+            return;
+        }
+        if ("MultiLineString".equalsIgnoreCase(type)) {
+            JSONArray multiCoordinates = geoJson.getJSONArray("coordinates");
+            if (multiCoordinates == null) {
+                return;
+            }
+            for (int i = 0; i < multiCoordinates.size(); i++) {
+                List<GeoPoint> line = parseLineStringCoordinates(multiCoordinates.getJSONArray(i));
+                if (line.size() >= 2) {
+                    lines.add(line);
+                }
+            }
+        }
+    }
+
+    private List<GeoPoint> parseLineStringCoordinates(JSONArray coordinates) {
+        List<GeoPoint> line = new ArrayList<>();
+        if (coordinates == null) {
+            return line;
+        }
+        for (int i = 0; i < coordinates.size(); i++) {
+            JSONArray point = coordinates.getJSONArray(i);
+            if (point == null || point.size() < 2) {
+                continue;
+            }
+            double lng = point.getDoubleValue(0);
+            double lat = point.getDoubleValue(1);
+            if (lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90) {
+                line.add(new GeoPoint(lng, lat));
+            }
+        }
+        return line;
+    }
+
+    private SnappedSpot snapSpotToRoad(RouteSpotDetailVO spot, RoadNetwork roadNetwork) {
+        GeoPoint spotPoint = new GeoPoint(spot.getLongitude().doubleValue(), spot.getLatitude().doubleValue());
+        ProjectionResult nearest = null;
+        for (RoadSegment segment : roadNetwork.segments) {
+            ProjectionResult projection = projectPointToSegment(spotPoint, segment);
+            if (nearest == null || projection.distanceMeters() < nearest.distanceMeters()) {
+                nearest = projection;
+            }
+        }
+        if (nearest == null) {
+            throw new BaseException("当前景区没有可用于计算的道路");
+        }
+
+        int snappedNodeId = roadNetwork.findOrCreateNode(nearest.projectedPoint());
+        roadNetwork.addEdge(snappedNodeId, nearest.segment().fromNodeId());
+        roadNetwork.addEdge(snappedNodeId, nearest.segment().toNodeId());
+        return new SnappedSpot(spot, snappedNodeId, nearest.projectedPoint(), nearest.distanceMeters());
+    }
+
+    private ProjectionResult projectPointToSegment(GeoPoint point, RoadSegment segment) {
+        double latRad = Math.toRadians((segment.from().lat() + segment.to().lat() + point.lat()) / 3.0);
+        double scaleX = Math.cos(latRad) * 111320.0;
+        double scaleY = 110540.0;
+        double ax = segment.from().lng() * scaleX;
+        double ay = segment.from().lat() * scaleY;
+        double bx = segment.to().lng() * scaleX;
+        double by = segment.to().lat() * scaleY;
+        double px = point.lng() * scaleX;
+        double py = point.lat() * scaleY;
+        double dx = bx - ax;
+        double dy = by - ay;
+        double lengthSquared = dx * dx + dy * dy;
+        double t = lengthSquared == 0 ? 0 : ((px - ax) * dx + (py - ay) * dy) / lengthSquared;
+        t = Math.max(0, Math.min(1, t));
+        GeoPoint projectedPoint = new GeoPoint(
+                segment.from().lng() + (segment.to().lng() - segment.from().lng()) * t,
+                segment.from().lat() + (segment.to().lat() - segment.from().lat()) * t
+        );
+        return new ProjectionResult(segment, projectedPoint, haversine(point, projectedPoint));
+    }
+
+    private PathBuildResult buildRoutePath(List<SnappedSpot> snappedSpots,
+                                           RoadNetwork roadNetwork,
+                                           String fallbackStrategy,
+                                           List<RouteGeoGenerateWarningVO> warnings) {
+        List<GeoPoint> coordinates = new ArrayList<>();
+        int roadSegmentCount = 0;
+        for (int i = 0; i < snappedSpots.size() - 1; i++) {
+            SnappedSpot from = snappedSpots.get(i);
+            SnappedSpot to = snappedSpots.get(i + 1);
+            List<Integer> nodePath = shortestPath(roadNetwork, from.nodeId(), to.nodeId());
+            List<GeoPoint> segmentCoordinates;
+            if (CollectionUtils.isEmpty(nodePath)) {
+                if (FALLBACK_FAIL.equals(fallbackStrategy)) {
+                    throw new BaseException("相邻景点间道路不连通，且兜底策略为 FAIL");
+                }
+                warnings.add(RouteGeoGenerateWarningVO.builder()
+                        .code("ROAD_PATH_NOT_CONNECTED")
+                        .message("景点“" + from.spot().getSpotName() + "”到“" + to.spot().getSpotName() + "”之间道路不连通，已使用直线补齐。")
+                        .spotId(to.spot().getSpotId())
+                        .spotName(to.spot().getSpotName())
+                        .build());
+                segmentCoordinates = List.of(from.point(), to.point());
+            } else {
+                segmentCoordinates = nodePath.stream()
+                        .map(nodeId -> roadNetwork.nodes.get(nodeId).point())
+                        .collect(Collectors.toList());
+                roadSegmentCount += Math.max(0, nodePath.size() - 1);
+            }
+            appendCoordinates(coordinates, segmentCoordinates);
+        }
+        return new PathBuildResult(coordinates, roadSegmentCount);
+    }
+
+    private List<Integer> shortestPath(RoadNetwork roadNetwork, int startNodeId, int endNodeId) {
+        if (startNodeId == endNodeId) {
+            return List.of(startNodeId);
+        }
+        Map<Integer, Double> distances = new HashMap<>();
+        Map<Integer, Integer> previous = new HashMap<>();
+        Set<Integer> visited = new HashSet<>();
+        PriorityQueue<NodeDistance> queue = new PriorityQueue<>(Comparator.comparingDouble(item -> item.distance));
+        distances.put(startNodeId, 0.0);
+        queue.offer(new NodeDistance(startNodeId, 0.0));
+
+        while (!queue.isEmpty()) {
+            NodeDistance current = queue.poll();
+            if (!visited.add(current.nodeId())) {
+                continue;
+            }
+            if (current.nodeId() == endNodeId) {
+                break;
+            }
+            for (GraphEdge edge : roadNetwork.adjacency.getOrDefault(current.nodeId(), Collections.emptyList())) {
+                if (visited.contains(edge.toNodeId())) {
+                    continue;
+                }
+                double nextDistance = current.distance() + edge.weightMeters();
+                if (nextDistance < distances.getOrDefault(edge.toNodeId(), Double.MAX_VALUE)) {
+                    distances.put(edge.toNodeId(), nextDistance);
+                    previous.put(edge.toNodeId(), current.nodeId());
+                    queue.offer(new NodeDistance(edge.toNodeId(), nextDistance));
+                }
+            }
+        }
+
+        if (!distances.containsKey(endNodeId)) {
+            return Collections.emptyList();
+        }
+        List<Integer> path = new ArrayList<>();
+        Integer currentNodeId = endNodeId;
+        while (currentNodeId != null) {
+            path.add(currentNodeId);
+            if (currentNodeId == startNodeId) {
+                break;
+            }
+            currentNodeId = previous.get(currentNodeId);
+        }
+        Collections.reverse(path);
+        return path;
+    }
+
+    private void appendCoordinates(List<GeoPoint> target, List<GeoPoint> source) {
+        for (GeoPoint point : source) {
+            if (target.isEmpty() || !samePoint(target.get(target.size() - 1), point)) {
+                target.add(point);
+            }
+        }
+    }
+
+    private JSONObject buildGeneratedGeoJson(TourRoute route,
+                                             RouteGeoGenerateDTO request,
+                                             List<GeoPoint> coordinates,
+                                             double distanceMeters) {
+        JSONArray coordinateArray = new JSONArray();
+        for (GeoPoint coordinate : coordinates) {
+            JSONArray point = new JSONArray();
+            point.add(roundDouble(coordinate.lng(), 6));
+            point.add(roundDouble(coordinate.lat(), 6));
+            coordinateArray.add(point);
+        }
+
+        JSONObject geometry = new JSONObject(true);
+        geometry.put("type", "LineString");
+        geometry.put("coordinates", coordinateArray);
+
+        JSONObject properties = new JSONObject(true);
+        properties.put("routeId", route.getId());
+        properties.put("scenicAreaId", route.getScenicAreaId());
+        properties.put("routeName", route.getRouteName());
+        properties.put("generated", true);
+        properties.put("algorithm", "road-network-shortest-path");
+        properties.put("roadTypes", request.getRoadTypes() == null ? Collections.emptyList() : request.getRoadTypes());
+        properties.put("distanceMeters", roundDouble(distanceMeters, 2));
+
+        JSONObject feature = new JSONObject(true);
+        feature.put("type", "Feature");
+        feature.put("geometry", geometry);
+        feature.put("properties", properties);
+        return feature;
+    }
+
+    private TourRouteGeo saveGeneratedRouteGeo(Long routeId,
+                                               JSONObject geojson,
+                                               Integer version,
+                                               RouteGeoGenerateDTO request) {
+        Integer status = defaultStatus(request.getStatus());
+        if (Boolean.TRUE.equals(request.getOverwriteActive()) && Integer.valueOf(1).equals(status)) {
+            tourRouteGeoMapper.listByRouteId(routeId).stream()
+                    .filter(geo -> Integer.valueOf(1).equals(geo.getStatus()))
+                    .forEach(geo -> {
+                        TourRouteGeo updateGeo = new TourRouteGeo();
+                        updateGeo.setId(geo.getId());
+                        updateGeo.setStatus(0);
+                        tourRouteGeoMapper.updateById(updateGeo);
+                    });
+        }
+
+        TourRouteGeo routeGeo = new TourRouteGeo();
+        routeGeo.setRouteId(routeId);
+        routeGeo.setGeojson(geojson.toJSONString());
+        routeGeo.setVersion(version);
+        routeGeo.setStatus(status);
+        routeGeo.setCreateTime(LocalDateTime.now());
+        routeGeo.setUpdateTime(LocalDateTime.now());
+        int count = tourRouteGeoMapper.insert(routeGeo);
+        if (count <= 0 || routeGeo.getId() == null) {
+            throw new BaseException("轨迹版本保存失败");
+        }
+        return routeGeo;
+    }
+
+    private Integer resolveGeoVersionForGenerate(Long routeId, Integer requestVersion) {
+        if (requestVersion != null) {
+            return requestVersion;
+        }
+        List<TourRouteGeo> geos = tourRouteGeoMapper.listByRouteId(routeId);
+        if (CollectionUtils.isEmpty(geos)) {
+            return 1;
+        }
+        return geos.stream()
+                .map(TourRouteGeo::getVersion)
+                .filter(version -> version != null)
+                .max(Integer::compareTo)
+                .orElse(0) + 1;
+    }
+
+    private void updateRouteDistance(Long routeId, double distanceMeters) {
+        TourRoute route = new TourRoute();
+        route.setId(routeId);
+        route.setDistanceMeters((int) Math.round(distanceMeters));
+        tourRouteMapper.updateById(route);
+    }
+
+    private double calculateLineDistance(List<GeoPoint> coordinates) {
+        double distance = 0.0;
+        for (int i = 0; i < coordinates.size() - 1; i++) {
+            distance += haversine(coordinates.get(i), coordinates.get(i + 1));
+        }
+        return distance;
+    }
+
+    private double haversine(GeoPoint from, GeoPoint to) {
+        double lat1 = Math.toRadians(from.lat());
+        double lat2 = Math.toRadians(to.lat());
+        double deltaLat = Math.toRadians(to.lat() - from.lat());
+        double deltaLng = Math.toRadians(to.lng() - from.lng());
+        double a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2)
+                + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return EARTH_RADIUS_METERS * c;
+    }
+
+    private boolean samePoint(GeoPoint from, GeoPoint to) {
+        return Math.abs(from.lng() - to.lng()) < 0.0000001 && Math.abs(from.lat() - to.lat()) < 0.0000001;
+    }
+
+    private double roundDouble(double value, int scale) {
+        return BigDecimal.valueOf(value).setScale(scale, RoundingMode.HALF_UP).doubleValue();
     }
 
     private void replaceRouteSpots(Long routeId, Long scenicAreaId, List<TourRouteSpotDTO> routeSpots) {
@@ -506,7 +1010,7 @@ public class MapServiceImpl implements MapService {
             throw new BaseException("景区ID不能为空");
         }
         if (!StringUtils.hasText(scenicGeoFeatureDTO.getFeatureName())) {
-            throw new BaseException("区域名称不能为空");
+            throw new BaseException("要素名称不能为空");
         }
         if (!StringUtils.hasText(scenicGeoFeatureDTO.getFeatureType())) {
             throw new BaseException("要素类型不能为空");
@@ -514,6 +1018,122 @@ public class MapServiceImpl implements MapService {
         if (!StringUtils.hasText(scenicGeoFeatureDTO.getGeojson())) {
             throw new BaseException("GeoJSON不能为空");
         }
+    }
+
+    private void normalizeAndValidateGeoFeatureForUpdate(ScenicGeoFeatureDTO scenicGeoFeatureDTO, ScenicGeoFeature existFeature) {
+        ScenicGeoFeatureDTO mergedFeature = new ScenicGeoFeatureDTO();
+        mergedFeature.setId(existFeature.getId());
+        mergedFeature.setScenicAreaId(defaultLong(scenicGeoFeatureDTO.getScenicAreaId(), existFeature.getScenicAreaId()));
+        mergedFeature.setFeatureName(defaultString(scenicGeoFeatureDTO.getFeatureName(), existFeature.getFeatureName()));
+        mergedFeature.setFeatureType(defaultString(scenicGeoFeatureDTO.getFeatureType(), existFeature.getFeatureType()));
+        mergedFeature.setGeometryType(defaultString(scenicGeoFeatureDTO.getGeometryType(), existFeature.getGeometryType()));
+        mergedFeature.setFeatureSubType(defaultString(scenicGeoFeatureDTO.getFeatureSubType(), existFeature.getFeatureSubType()));
+        mergedFeature.setLengthMeters(defaultInteger(scenicGeoFeatureDTO.getLengthMeters(), existFeature.getLengthMeters()));
+        mergedFeature.setPropertiesJson(defaultString(scenicGeoFeatureDTO.getPropertiesJson(), existFeature.getPropertiesJson()));
+        mergedFeature.setGeojson(defaultString(scenicGeoFeatureDTO.getGeojson(), existFeature.getGeojson()));
+        normalizeAndValidateGeoFeature(mergedFeature);
+
+        if (StringUtils.hasText(scenicGeoFeatureDTO.getFeatureType())) {
+            scenicGeoFeatureDTO.setFeatureType(mergedFeature.getFeatureType());
+        }
+        if (StringUtils.hasText(scenicGeoFeatureDTO.getGeometryType()) || StringUtils.hasText(scenicGeoFeatureDTO.getGeojson())) {
+            scenicGeoFeatureDTO.setGeometryType(mergedFeature.getGeometryType());
+        }
+        if (StringUtils.hasText(scenicGeoFeatureDTO.getFeatureSubType())) {
+            scenicGeoFeatureDTO.setFeatureSubType(mergedFeature.getFeatureSubType());
+        }
+        if (scenicGeoFeatureDTO.getLengthMeters() != null) {
+            scenicGeoFeatureDTO.setLengthMeters(mergedFeature.getLengthMeters());
+        }
+    }
+
+    private void normalizeAndValidateGeoFeature(ScenicGeoFeatureDTO scenicGeoFeatureDTO) {
+        String featureType = normalizeCode(scenicGeoFeatureDTO.getFeatureType());
+        if (!SUPPORTED_FEATURE_TYPES.contains(featureType)) {
+            throw new BaseException("要素类型不支持");
+        }
+        scenicGeoFeatureDTO.setFeatureType(featureType);
+
+        if (StringUtils.hasText(scenicGeoFeatureDTO.getFeatureSubType())) {
+            scenicGeoFeatureDTO.setFeatureSubType(normalizeCode(scenicGeoFeatureDTO.getFeatureSubType()));
+        }
+        if (scenicGeoFeatureDTO.getLengthMeters() != null && scenicGeoFeatureDTO.getLengthMeters() < 0) {
+            throw new BaseException("要素长度不能小于0");
+        }
+
+        String geometryType = parseGeoJsonGeometryType(scenicGeoFeatureDTO.getGeojson());
+        if (StringUtils.hasText(scenicGeoFeatureDTO.getGeometryType())
+                && !geometryType.equals(normalizeCode(scenicGeoFeatureDTO.getGeometryType()))) {
+            throw new BaseException("GeoJSON几何类型与geometryType不一致");
+        }
+        scenicGeoFeatureDTO.setGeometryType(geometryType);
+        validateFeatureGeometryType(featureType, geometryType);
+
+        if (StringUtils.hasText(scenicGeoFeatureDTO.getPropertiesJson())) {
+            validateJsonObject(scenicGeoFeatureDTO.getPropertiesJson(), "扩展属性JSON格式不正确");
+        }
+    }
+
+    private String parseGeoJsonGeometryType(String geojson) {
+        JSONObject geoJsonObject = validateJsonObject(geojson, "GeoJSON格式不正确");
+        JSONObject geometryObject = geoJsonObject;
+        if ("Feature".equalsIgnoreCase(geoJsonObject.getString("type"))) {
+            geometryObject = geoJsonObject.getJSONObject("geometry");
+            if (geometryObject == null) {
+                throw new BaseException("GeoJSON缺少geometry");
+            }
+        }
+
+        String rawGeometryType = geometryObject.getString("type");
+        if (!StringUtils.hasText(rawGeometryType)) {
+            throw new BaseException("GeoJSON缺少几何类型");
+        }
+        if ("Point".equalsIgnoreCase(rawGeometryType) || "MultiPoint".equalsIgnoreCase(rawGeometryType)) {
+            return GEOMETRY_TYPE_POINT;
+        }
+        if ("LineString".equalsIgnoreCase(rawGeometryType) || "MultiLineString".equalsIgnoreCase(rawGeometryType)) {
+            return GEOMETRY_TYPE_LINE;
+        }
+        if ("Polygon".equalsIgnoreCase(rawGeometryType) || "MultiPolygon".equalsIgnoreCase(rawGeometryType)) {
+            return GEOMETRY_TYPE_POLYGON;
+        }
+        throw new BaseException("GeoJSON几何类型不支持");
+    }
+
+    private void validateFeatureGeometryType(String featureType, String geometryType) {
+        if (FEATURE_TYPE_ROAD.equals(featureType)) {
+            if (!GEOMETRY_TYPE_LINE.equals(geometryType)) {
+                throw new BaseException("道路要素必须使用LineString或MultiLineString");
+            }
+            return;
+        }
+        if (!GEOMETRY_TYPE_POLYGON.equals(geometryType)) {
+            throw new BaseException("区域类空间要素必须使用Polygon或MultiPolygon");
+        }
+    }
+
+    private JSONObject validateJsonObject(String json, String message) {
+        try {
+            return JSON.parseObject(json);
+        } catch (JSONException | ClassCastException e) {
+            throw new BaseException(message);
+        }
+    }
+
+    private String normalizeCode(String value) {
+        return value.trim().toUpperCase();
+    }
+
+    private String defaultString(String value, String defaultValue) {
+        return StringUtils.hasText(value) ? value : defaultValue;
+    }
+
+    private Long defaultLong(Long value, Long defaultValue) {
+        return value == null ? defaultValue : value;
+    }
+
+    private Integer defaultInteger(Integer value, Integer defaultValue) {
+        return value == null ? defaultValue : value;
     }
 
     private void validateInteractionLog(MapInteractionLogDTO mapInteractionLogDTO) {
@@ -652,11 +1272,70 @@ public class MapServiceImpl implements MapService {
                 .scenicAreaId(scenicGeoFeature.getScenicAreaId())
                 .featureName(scenicGeoFeature.getFeatureName())
                 .featureType(scenicGeoFeature.getFeatureType())
+                .geometryType(scenicGeoFeature.getGeometryType())
+                .featureSubType(scenicGeoFeature.getFeatureSubType())
+                .lengthMeters(scenicGeoFeature.getLengthMeters())
+                .propertiesJson(scenicGeoFeature.getPropertiesJson())
                 .geojson(scenicGeoFeature.getGeojson())
                 .status(scenicGeoFeature.getStatus())
                 .deleted(scenicGeoFeature.getDeleted())
                 .createTime(scenicGeoFeature.getCreateTime())
                 .updateTime(scenicGeoFeature.getUpdateTime())
                 .build();
+    }
+
+    private class RoadNetwork {
+
+        private final List<GraphNode> nodes = new ArrayList<>();
+
+        private final Map<Integer, List<GraphEdge>> adjacency = new HashMap<>();
+
+        private final List<RoadSegment> segments = new ArrayList<>();
+
+        private int findOrCreateNode(GeoPoint point) {
+            for (GraphNode node : nodes) {
+                if (haversine(node.point(), point) <= NODE_MERGE_TOLERANCE_METERS) {
+                    return node.id();
+                }
+            }
+            int nodeId = nodes.size();
+            nodes.add(new GraphNode(nodeId, point));
+            return nodeId;
+        }
+
+        private void addEdge(int fromNodeId, int toNodeId) {
+            if (fromNodeId == toNodeId) {
+                return;
+            }
+            double weightMeters = haversine(nodes.get(fromNodeId).point(), nodes.get(toNodeId).point());
+            adjacency.computeIfAbsent(fromNodeId, key -> new ArrayList<>())
+                    .add(new GraphEdge(toNodeId, weightMeters));
+            adjacency.computeIfAbsent(toNodeId, key -> new ArrayList<>())
+                    .add(new GraphEdge(fromNodeId, weightMeters));
+        }
+    }
+
+    private record GeoPoint(double lng, double lat) {
+    }
+
+    private record GraphNode(int id, GeoPoint point) {
+    }
+
+    private record GraphEdge(int toNodeId, double weightMeters) {
+    }
+
+    private record RoadSegment(GeoPoint from, GeoPoint to, int fromNodeId, int toNodeId) {
+    }
+
+    private record ProjectionResult(RoadSegment segment, GeoPoint projectedPoint, double distanceMeters) {
+    }
+
+    private record SnappedSpot(RouteSpotDetailVO spot, int nodeId, GeoPoint point, double distanceMeters) {
+    }
+
+    private record NodeDistance(int nodeId, double distance) {
+    }
+
+    private record PathBuildResult(List<GeoPoint> coordinates, int roadSegmentCount) {
     }
 }

@@ -193,6 +193,10 @@ export interface ScenicGeoFeatureVO {
   scenicAreaId: number
   featureName: string
   featureType: string
+  geometryType: string
+  featureSubType: string | null
+  lengthMeters: number | null
+  propertiesJson: string | null
   geojson: string
   status: number
   deleted: number
@@ -203,7 +207,10 @@ export interface ScenicGeoFeatureVO {
 
 说明：
 
-- `featureType` 常见值：`BOUNDARY`、`ZONE`、`RESTRICTED`、`ENTRANCE_AREA`
+- `featureType` 常见值：`BOUNDARY`、`ZONE`、`RESTRICTED`、`ENTRANCE_AREA`、`ROAD`
+- `geometryType` 常见值：`POINT`、`LINE`、`POLYGON`
+- 区域类要素使用 `Polygon` / `MultiPolygon`
+- 道路类要素 `ROAD` 使用 `LineString` / `MultiLineString`
 
 ### 3.6 地图初始化对象 `MapInitVO`
 
@@ -638,7 +645,7 @@ export interface RouteDetailVO {
 ## 5.16 新增景区空间要素
 
 - 路径：`POST /map/geo-features`
-- 用途：新增景区边界、分区、限制区域等 GeoJSON 要素
+- 用途：新增景区边界、分区、限制区域、道路等 GeoJSON 要素
 
 请求示例：
 
@@ -647,7 +654,25 @@ export interface RouteDetailVO {
   "scenicAreaId": 1,
   "featureName": "景区边界",
   "featureType": "BOUNDARY",
+  "geometryType": "POLYGON",
   "geojson": "{\"type\":\"Polygon\",\"coordinates\":[[[120.1,30.2],[120.2,30.2],[120.2,30.3],[120.1,30.2]]]}",
+  "status": 1,
+  "deleted": 0
+}
+```
+
+道路要素示例：
+
+```json
+{
+  "scenicAreaId": 1,
+  "featureName": "湖边步道A段",
+  "featureType": "ROAD",
+  "geometryType": "LINE",
+  "featureSubType": "WALK",
+  "lengthMeters": 128,
+  "propertiesJson": "{\"bidirectional\":true,\"passable\":true}",
+  "geojson": "{\"type\":\"Feature\",\"geometry\":{\"type\":\"LineString\",\"coordinates\":[[113.976425,30.125581],[113.9771,30.1262]]},\"properties\":{\"roadType\":\"WALK\"}}",
   "status": 1,
   "deleted": 0
 }

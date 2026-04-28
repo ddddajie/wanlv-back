@@ -1,6 +1,7 @@
 package com.example.wanlvback.controller;
 
 import com.example.wanlvback.pojo.dto.MapInteractionLogDTO;
+import com.example.wanlvback.pojo.dto.RouteGeoGenerateDTO;
 import com.example.wanlvback.pojo.dto.ScenicAreaDTO;
 import com.example.wanlvback.pojo.dto.ScenicGeoFeatureDTO;
 import com.example.wanlvback.pojo.dto.ScenicSpotDTO;
@@ -8,6 +9,7 @@ import com.example.wanlvback.pojo.dto.TourRouteDTO;
 import com.example.wanlvback.pojo.dto.TourRouteGeoDTO;
 import com.example.wanlvback.pojo.vo.MapInitVO;
 import com.example.wanlvback.pojo.vo.RouteDetailVO;
+import com.example.wanlvback.pojo.vo.RouteGeoGenerateVO;
 import com.example.wanlvback.pojo.vo.ScenicAreaVO;
 import com.example.wanlvback.pojo.vo.ScenicGeoFeatureVO;
 import com.example.wanlvback.pojo.vo.ScenicSpotVO;
@@ -134,6 +136,14 @@ public class MapController {
     public Result<TourRouteGeoVO> createRouteGeo(@RequestBody TourRouteGeoDTO tourRouteGeoDTO) {
         log.info("收到路线几何新增请求, routeId={}", tourRouteGeoDTO == null ? null : tourRouteGeoDTO.getRouteId());
         return Result.success(mapService.createTourRouteGeo(tourRouteGeoDTO));
+    }
+
+    @PostMapping("/routes/{routeId}/geo/generate")
+    public Result<RouteGeoGenerateVO> generateRouteGeo(@PathVariable Long routeId,
+                                                       @RequestBody(required = false) RouteGeoGenerateDTO routeGeoGenerateDTO) {
+        log.info("收到路线轨迹自动生成请求, routeId={}, saveAsVersion={}",
+                routeId, routeGeoGenerateDTO == null ? null : routeGeoGenerateDTO.getSaveAsVersion());
+        return Result.success(mapService.generateRouteGeo(routeId, routeGeoGenerateDTO));
     }
 
     @PutMapping("/route-geos")

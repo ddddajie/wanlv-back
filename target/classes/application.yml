@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: wanlv-back
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/wanlv?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+mybatis:
+  mapper-locations: classpath*:mapper/*.xml
+  type-aliases-package: com.example.wanlvback.pojo.entity,com.example.wanlvback.pojo.dto,com.example.wanlvback.pojo.vo
+  configuration:
+    map-underscore-to-camel-case: true
+    call-setters-on-nulls: true
+    jdbc-type-for-null: 'NULL'
+
+logging:
+  level:
+    com.example.wanlvback.mapper: debug
+
+wanlv:
+  internal:
+    enabled: true
+    token: ${WANLV_INTERNAL_TOKEN:change-this-internal-token}
+    header-name: X-Internal-Token
+    allow-loopback: true
+    allow-private-network: true
+  agent:
+    base-url: http://127.0.0.1:8000
+    connect-timeout-ms: 600000
+    read-timeout-ms: 600000
+    daily-analysis-cron: "59 59 23 * * ?"
+    daily-analysis-zone: Asia/Shanghai

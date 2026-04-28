@@ -51,5 +51,9 @@ public class ScenicAreaDTO implements Serializable {
 
     private String mapBoundsJson; // 地图边界JSON
 
+    private Long createBy; // 创建人ID
+
+    private Long updateBy; // 更新人ID
+
     private Integer status; // 状态
 }

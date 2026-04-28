@@ -25,11 +25,19 @@ public class ScenicGeoFeature implements Serializable {
 
     private Long scenicAreaId; // 所属景区ID
 
-    private String featureName; // 区域名称
+    private String featureName; // 要素名称
 
     private String featureType; // 要素类型
 
-    private String geojson; // 区域GeoJSON数据
+    private String geometryType; // 几何类型：POINT/LINE/POLYGON
+
+    private String featureSubType; // 要素子类型
+
+    private Integer lengthMeters; // 长度（米）
+
+    private String propertiesJson; // 扩展属性JSON
+
+    private String geojson; // GeoJSON数据
 
     private Integer status; // 状态
 

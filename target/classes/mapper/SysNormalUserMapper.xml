@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.SysNormalUserMapper">
+
+    <resultMap id="SysNormalUserResultMap" type="com.example.wanlvback.pojo.entity.SysNormalUser">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="nickname" property="nickname"/>
+        <result column="phone" property="phone"/>
+        <result column="email" property="email"/>
+        <result column="avatar_url" property="avatarUrl"/>
+        <result column="gender" property="gender"/>
+        <result column="age" property="age"/>
+        <result column="interest_tags" property="interestTags"/>
+        <result column="status" property="status"/>
+        <result column="last_login_time" property="lastLoginTime"/>
+        <result column="deleted" property="deleted"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="getByUsername" resultMap="SysNormalUserResultMap">
+        select id,
+               username,
+               password,
+               nickname,
+               phone,
+               email,
+               avatar_url,
+               gender,
+               age,
+               interest_tags,
+               status,
+               last_login_time,
+               deleted,
+               create_time,
+               update_time
+        from sys_normal_user
+        where username = #{username}
+        limit 1
+    </select>
+
+    <select id="getById" resultMap="SysNormalUserResultMap">
+        select id,
+               username,
+               password,
+               nickname,
+               phone,
+               email,
+               avatar_url,
+               gender,
+               age,
+               interest_tags,
+               status,
+               last_login_time,
+               deleted,
+               create_time,
+               update_time
+        from sys_normal_user
+        where id = #{id}
+        limit 1
+    </select>
+
+    <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.SysNormalUser" useGeneratedKeys="true" keyProperty="id">
+        insert into sys_normal_user (
+            username,
+            password,
+            nickname,
+            phone,
+            email,
+            avatar_url,
+            gender,
+            age,
+            interest_tags,
+            status,
+            last_login_time,
+            deleted,
+            create_time,
+            update_time
+        ) values (
+            #{username},
+            #{password},
+            #{nickname},
+            #{phone},
+            #{email},
+            #{avatarUrl},
+            #{gender},
+            #{age},
+            #{interestTags},
+            #{status},
+            #{lastLoginTime},
+            #{deleted},
+            #{createTime},
+            #{updateTime}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.example.wanlvback.pojo.entity.SysNormalUser">
+        update sys_normal_user
+        <set>
+            <if test="username != null and username != ''">
+                username = #{username},
+            </if>
+            <if test="password != null and password != ''">
+                password = #{password},
+            </if>
+            <if test="nickname != null and nickname != ''">
+                nickname = #{nickname},
+            </if>
+            <if test="phone != null and phone != ''">
+                phone = #{phone},
+            </if>
+            <if test="email != null and email != ''">
+                email = #{email},
+            </if>
+            <if test="avatarUrl != null and avatarUrl != ''">
+                avatar_url = #{avatarUrl},
+            </if>
+            <if test="gender != null">
+                gender = #{gender},
+            </if>
+            <if test="age != null">
+                age = #{age},
+            </if>
+            <if test="interestTags != null and interestTags != ''">
+                interest_tags = #{interestTags},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            update_time = now()
+        </set>
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+    <update id="updatePasswordById">
+        update sys_normal_user
+        set password = #{password},
+            update_time = now()
+        where id = #{id}
+    </update>
+
+    <update id="updateLastLoginTime">
+        update sys_normal_user
+        set last_login_time = #{lastLoginTime},
+            update_time = now()
+        where id = #{id}
+    </update>
+
+    <select id="listAll" resultMap="SysNormalUserResultMap">
+        select id,
+               username,
+               password,
+               nickname,
+               phone,
+               email,
+               avatar_url,
+               gender,
+               age,
+               interest_tags,
+               status,
+               last_login_time,
+               deleted,
+               create_time,
+               update_time
+        from sys_normal_user
+        order by create_time desc, id desc
+    </select>
+    <select id="pageQuery" resultType="com.example.wanlvback.pojo.entity.SysNormalUser">
+        select * from sys_normal_user
+    </select>
+
+</mapper>

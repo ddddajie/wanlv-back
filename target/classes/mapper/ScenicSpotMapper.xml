@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.ScenicSpotMapper">
+
+    <resultMap id="ScenicSpotResultMap" type="com.example.wanlvback.pojo.entity.ScenicSpot">
+        <id column="id" property="id"/>
+        <result column="scenic_area_id" property="scenicAreaId"/>
+        <result column="spot_name" property="spotName"/>
+        <result column="poi_type" property="poiType"/>
+        <result column="icon_type" property="iconType"/>
+        <result column="spot_code" property="spotCode"/>
+        <result column="short_intro" property="shortIntro"/>
+        <result column="description" property="description"/>
+        <result column="longitude" property="longitude"/>
+        <result column="latitude" property="latitude"/>
+        <result column="stay_duration_minutes" property="stayDurationMinutes"/>
+        <result column="opening_hours" property="openingHours"/>
+        <result column="cover_image_url" property="coverImageUrl"/>
+        <result column="audio_url" property="audioUrl"/>
+        <result column="video_url" property="videoUrl"/>
+        <result column="knowledge_doc_id" property="knowledgeDocId"/>
+        <result column="recommended_level" property="recommendedLevel"/>
+        <result column="sort_no" property="sortNo"/>
+        <result column="status" property="status"/>
+        <result column="deleted" property="deleted"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,
+        scenic_area_id,
+        spot_name,
+        poi_type,
+        icon_type,
+        spot_code,
+        short_intro,
+        description,
+        longitude,
+        latitude,
+        stay_duration_minutes,
+        opening_hours,
+        cover_image_url,
+        audio_url,
+        video_url,
+        knowledge_doc_id,
+        recommended_level,
+        sort_no,
+        status,
+        deleted,
+        create_by,
+        create_time,
+        update_by,
+        update_time
+    </sql>
+
+    <select id="getById" resultMap="ScenicSpotResultMap">
+        select <include refid="Base_Column_List"/>
+        from scenic_spot
+        where id = #{id}
+          and deleted = 0
+        limit 1
+    </select>
+
+    <select id="getActiveById" resultMap="ScenicSpotResultMap">
+        select <include refid="Base_Column_List"/>
+        from scenic_spot
+        where id = #{id}
+          and status = 1
+          and deleted = 0
+        limit 1
+    </select>
+
+    <select id="pageQuery" resultMap="ScenicSpotResultMap">
+        select <include refid="Base_Column_List"/>
+        from scenic_spot
+        where deleted = 0
+        <if test="scenicAreaId != null">
+            and scenic_area_id = #{scenicAreaId}
+        </if>
+        <if test="spotName != null and spotName != ''">
+            and spot_name like concat('%', #{spotName}, '%')
+        </if>
+        <if test="status != null">
+            and status = #{status}
+        </if>
+        order by recommended_level desc, sort_no asc, id asc
+    </select>
+
+    <select id="listActiveByScenicAreaId" resultMap="ScenicSpotResultMap">
+        select <include refid="Base_Column_List"/>
+        from scenic_spot
+        where scenic_area_id = #{scenicAreaId}
+          and status = 1
+          and deleted = 0
+        order by recommended_level desc, sort_no asc, id asc
+    </select>
+
+    <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.ScenicSpot" useGeneratedKeys="true" keyProperty="id">
+        insert into scenic_spot (
+            scenic_area_id,
+            spot_name,
+            poi_type,
+            icon_type,
+            spot_code,
+            short_intro,
+            description,
+            longitude,
+            latitude,
+            stay_duration_minutes,
+            opening_hours,
+            cover_image_url,
+            audio_url,
+            video_url,
+            knowledge_doc_id,
+            recommended_level,
+            sort_no,
+            status,
+            deleted,
+            create_by,
+            create_time,
+            update_by,
+            update_time
+        ) values (
+            #{scenicAreaId},
+            #{spotName},
+            #{poiType},
+            #{iconType},
+            #{spotCode},
+            #{shortIntro},
+            #{description},
+            #{longitude},
+            #{latitude},
+            #{stayDurationMinutes},
+            #{openingHours},
+            #{coverImageUrl},
+            #{audioUrl},
+            #{videoUrl},
+            #{knowledgeDocId},
+            #{recommendedLevel},
+            #{sortNo},
+            #{status},
+            #{deleted},
+            #{createBy},
+            #{createTime},
+            #{updateBy},
+            #{updateTime}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.example.wanlvback.pojo.entity.ScenicSpot">
+        update scenic_spot
+        <set>
+            <if test="scenicAreaId != null">
+                scenic_area_id = #{scenicAreaId},
+            </if>
+            <if test="spotName != null and spotName != ''">
+                spot_name = #{spotName},
+            </if>
+            <if test="poiType != null">
+                poi_type = #{poiType},
+            </if>
+            <if test="iconType != null">
+                icon_type = #{iconType},
+            </if>
+            <if test="spotCode != null">
+                spot_code = #{spotCode},
+            </if>
+            <if test="shortIntro != null">
+                short_intro = #{shortIntro},
+            </if>
+            <if test="description != null">
+                description = #{description},
+            </if>
+            <if test="longitude != null">
+                longitude = #{longitude},
+            </if>
+            <if test="latitude != null">
+                latitude = #{latitude},
+            </if>
+            <if test="stayDurationMinutes != null">
+                stay_duration_minutes = #{stayDurationMinutes},
+            </if>
+            <if test="openingHours != null">
+                opening_hours = #{openingHours},
+            </if>
+            <if test="coverImageUrl != null">
+                cover_image_url = #{coverImageUrl},
+            </if>
+            <if test="audioUrl != null">
+                audio_url = #{audioUrl},
+            </if>
+            <if test="videoUrl != null">
+                video_url = #{videoUrl},
+            </if>
+            <if test="knowledgeDocId != null">
+                knowledge_doc_id = #{knowledgeDocId},
+            </if>
+            <if test="recommendedLevel != null">
+                recommended_level = #{recommendedLevel},
+            </if>
+            <if test="sortNo != null">
+                sort_no = #{sortNo},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            <if test="updateBy != null">
+                update_by = #{updateBy},
+            </if>
+            update_time = now()
+        </set>
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+</mapper>

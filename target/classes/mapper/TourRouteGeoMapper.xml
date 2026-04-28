@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.TourRouteGeoMapper">
+
+    <resultMap id="TourRouteGeoResultMap" type="com.example.wanlvback.pojo.entity.TourRouteGeo">
+        <id column="id" property="id"/>
+        <result column="route_id" property="routeId"/>
+        <result column="geojson" property="geojson"/>
+        <result column="version" property="version"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="getById" resultMap="TourRouteGeoResultMap">
+        select id, route_id, geojson, version, status, create_time, update_time
+        from tour_route_geo
+        where id = #{id}
+        limit 1
+    </select>
+
+    <select id="getLatestActiveByRouteId" resultMap="TourRouteGeoResultMap">
+        select id, route_id, geojson, version, status, create_time, update_time
+        from tour_route_geo
+        where route_id = #{routeId}
+          and status = 1
+        order by version desc, id desc
+        limit 1
+    </select>
+
+    <select id="listByRouteId" resultMap="TourRouteGeoResultMap">
+        select id, route_id, geojson, version, status, create_time, update_time
+        from tour_route_geo
+        where route_id = #{routeId}
+        order by version desc, id desc
+    </select>
+
+    <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.TourRouteGeo" useGeneratedKeys="true" keyProperty="id">
+        insert into tour_route_geo (
+            route_id,
+            geojson,
+            version,
+            status,
+            create_time,
+            update_time
+        ) values (
+            #{routeId},
+            #{geojson},
+            #{version},
+            #{status},
+            #{createTime},
+            #{updateTime}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.example.wanlvback.pojo.entity.TourRouteGeo">
+        update tour_route_geo
+        <set>
+            <if test="routeId != null">
+                route_id = #{routeId},
+            </if>
+            <if test="geojson != null and geojson != ''">
+                geojson = #{geojson},
+            </if>
+            <if test="version != null">
+                version = #{version},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            update_time = now()
+        </set>
+        where id = #{id}
+    </update>
+
+</mapper>
