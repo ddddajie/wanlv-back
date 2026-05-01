@@ -27,6 +27,11 @@ public interface VisitorSessionMapper {
     List<VisitorSession> listByReportDate(@Param("reportDate") LocalDate reportDate);
 
     /**
+     * 查询用户已完成日报分析的会话，用于生成数字画像。
+     */
+    List<VisitorSession> listAnalyzedByUserId(@Param("userId") Long userId);
+
+    /**
      * 新增一条会话记录。
      */
     int insert(VisitorSession visitorSession);

@@ -22,6 +22,7 @@ import com.example.wanlvback.pojo.vo.ChatAnswerVO;
 import com.example.wanlvback.pojo.vo.SessionAnalysisBatchItemVO;
 import com.example.wanlvback.pojo.vo.SessionAnalysisBatchVO;
 import com.example.wanlvback.service.ChatService;
+import com.example.wanlvback.service.UserDigitalProfileService;
 import com.example.wanlvback.utils.AgentChatHttpUtil;
 import com.example.wanlvback.utils.PasswordUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -71,6 +72,9 @@ public class ChatServiceImpl implements ChatService {
 
     @Autowired
     private AgentChatHttpUtil agentChatHttpUtil;
+
+    @Autowired
+    private UserDigitalProfileService userDigitalProfileService;
 
     /**
      * 处理聊天请求。
@@ -320,6 +324,8 @@ public class ChatServiceImpl implements ChatService {
         visitorSession.setInterestTags(updateSession.getInterestTags());
         visitorSession.setServiceSuggestions(updateSession.getServiceSuggestions());
         visitorSession.setKnowledgeGapPoints(updateSession.getKnowledgeGapPoints());
+
+        userDigitalProfileService.refreshByUserId(visitorSession.getUserId());
     }
 
     /**

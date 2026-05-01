@@ -7,6 +7,7 @@
     <resultMap id="TourRouteGeoResultMap" type="com.example.wanlvback.pojo.entity.TourRouteGeo">
         <id column="id" property="id"/>
         <result column="route_id" property="routeId"/>
+        <result column="scenic_area_id" property="scenicAreaId"/>
         <result column="geojson" property="geojson"/>
         <result column="version" property="version"/>
         <result column="status" property="status"/>
@@ -15,14 +16,14 @@
     </resultMap>
 
     <select id="getById" resultMap="TourRouteGeoResultMap">
-        select id, route_id, geojson, version, status, create_time, update_time
+        select id, route_id, scenic_area_id, geojson, version, status, create_time, update_time
         from tour_route_geo
         where id = #{id}
         limit 1
     </select>
 
     <select id="getLatestActiveByRouteId" resultMap="TourRouteGeoResultMap">
-        select id, route_id, geojson, version, status, create_time, update_time
+        select id, route_id, scenic_area_id, geojson, version, status, create_time, update_time
         from tour_route_geo
         where route_id = #{routeId}
           and status = 1
@@ -31,7 +32,7 @@
     </select>
 
     <select id="listByRouteId" resultMap="TourRouteGeoResultMap">
-        select id, route_id, geojson, version, status, create_time, update_time
+        select id, route_id, scenic_area_id, geojson, version, status, create_time, update_time
         from tour_route_geo
         where route_id = #{routeId}
         order by version desc, id desc
@@ -40,6 +41,7 @@
     <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.TourRouteGeo" useGeneratedKeys="true" keyProperty="id">
         insert into tour_route_geo (
             route_id,
+            scenic_area_id,
             geojson,
             version,
             status,
@@ -47,6 +49,7 @@
             update_time
         ) values (
             #{routeId},
+            #{scenicAreaId},
             #{geojson},
             #{version},
             #{status},
@@ -60,6 +63,9 @@
         <set>
             <if test="routeId != null">
                 route_id = #{routeId},
+            </if>
+            <if test="scenicAreaId != null">
+                scenic_area_id = #{scenicAreaId},
             </if>
             <if test="geojson != null and geojson != ''">
                 geojson = #{geojson},

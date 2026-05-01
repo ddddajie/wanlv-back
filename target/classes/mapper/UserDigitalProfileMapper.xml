@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.UserDigitalProfileMapper">
+
+    <resultMap id="UserDigitalProfileResultMap" type="com.example.wanlvback.pojo.entity.UserDigitalProfile">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="profile_name" property="profileName"/>
+        <result column="interest_tags" property="interestTags"/>
+        <result column="focus_topics" property="focusTopics"/>
+        <result column="service_needs" property="serviceNeeds"/>
+        <result column="knowledge_gaps" property="knowledgeGaps"/>
+        <result column="travel_style" property="travelStyle"/>
+        <result column="activity_level" property="activityLevel"/>
+        <result column="sentiment_tendency" property="sentimentTendency"/>
+        <result column="sentiment_score_avg" property="sentimentScoreAvg"/>
+        <result column="profile_score" property="profileScore"/>
+        <result column="source_session_count" property="sourceSessionCount"/>
+        <result column="last_analyzed_date" property="lastAnalyzedDate"/>
+        <result column="profile_json" property="profileJson"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="getByUserId" resultMap="UserDigitalProfileResultMap">
+        select *
+        from user_digital_profile
+        where user_id = #{userId}
+        limit 1
+    </select>
+
+    <insert id="upsert" parameterType="com.example.wanlvback.pojo.entity.UserDigitalProfile" useGeneratedKeys="true" keyProperty="id">
+        insert into user_digital_profile (
+            user_id,
+            profile_name,
+            interest_tags,
+            focus_topics,
+            service_needs,
+            knowledge_gaps,
+            travel_style,
+            activity_level,
+            sentiment_tendency,
+            sentiment_score_avg,
+            profile_score,
+            source_session_count,
+            last_analyzed_date,
+            profile_json,
+            create_time,
+            update_time
+        ) values (
+            #{userId},
+            #{profileName},
+            #{interestTags},
+            #{focusTopics},
+            #{serviceNeeds},
+            #{knowledgeGaps},
+            #{travelStyle},
+            #{activityLevel},
+            #{sentimentTendency},
+            #{sentimentScoreAvg},
+            #{profileScore},
+            #{sourceSessionCount},
+            #{lastAnalyzedDate},
+            #{profileJson},
+            now(),
+            now()
+        )
+        on duplicate key update
+            profile_name = values(profile_name),
+            interest_tags = values(interest_tags),
+            focus_topics = values(focus_topics),
+            service_needs = values(service_needs),
+            knowledge_gaps = values(knowledge_gaps),
+            travel_style = values(travel_style),
+            activity_level = values(activity_level),
+            sentiment_tendency = values(sentiment_tendency),
+            sentiment_score_avg = values(sentiment_score_avg),
+            profile_score = values(profile_score),
+            source_session_count = values(source_session_count),
+            last_analyzed_date = values(last_analyzed_date),
+            profile_json = values(profile_json),
+            update_time = now()
+    </insert>
+
+</mapper>

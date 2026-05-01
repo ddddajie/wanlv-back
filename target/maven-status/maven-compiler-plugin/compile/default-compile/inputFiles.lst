@@ -6,6 +6,7 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\controller\ChatContr
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\controller\InternalSchemaController.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\controller\MapController.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\controller\UserController.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\controller\UserDigitalProfileController.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\exception\BaseException.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\handler\GlobalExceptionHandler.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\interceptor\InternalApiInterceptor.java
@@ -18,6 +19,7 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\SysNormalUser
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\TourRouteGeoMapper.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\TourRouteMapper.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\TourRouteSpotMapper.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\UserDigitalProfileMapper.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\VisitorMessageMapper.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\VisitorSessionMapper.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\AdminCreateDTO.java
@@ -50,6 +52,7 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\SysNorma
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\TourRoute.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\TourRouteGeo.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\TourRouteSpot.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\UserDigitalProfile.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\VisitorMessage.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\VisitorSession.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\AdminUserVO.java
@@ -76,6 +79,7 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\SessionAnaly
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\TourRouteGeoVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\TourRouteSpotVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\TourRouteVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\UserDigitalProfileVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\UserLoginVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\result\PageResult.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\result\Result.java
@@ -83,9 +87,11 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\ChatService.
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\impl\ChatServiceImpl.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\impl\InternalSchemaServiceImpl.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\impl\MapServiceImpl.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\impl\UserDigitalProfileServiceImpl.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\impl\UserServiceImpl.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\InternalSchemaService.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\MapService.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\UserDigitalProfileService.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\UserService.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\task\SessionAnalysisScheduleTask.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\utils\AgentChatHttpUtil.java

@@ -4,13 +4,16 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.example.wanlvback.exception.BaseException;
+import com.example.wanlvback.mapper.UserDigitalProfileMapper;
 import com.example.wanlvback.pojo.dto.ChatAskDTO;
 import com.example.wanlvback.pojo.entity.SysNormalUser;
+import com.example.wanlvback.pojo.entity.UserDigitalProfile;
 import com.example.wanlvback.pojo.entity.VisitorMessage;
 import com.example.wanlvback.pojo.entity.VisitorSession;
 import com.example.wanlvback.pojo.vo.AgentChatResponseVO;
 import com.example.wanlvback.pojo.vo.AgentSessionAnalysisResponseVO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -34,6 +37,9 @@ import java.util.List;
 @Component
 @Slf4j
 public class AgentChatHttpUtil {
+
+    @Autowired
+    private UserDigitalProfileMapper userDigitalProfileMapper;
 
     /**
      * Agent 服务基础地址。
@@ -72,9 +78,16 @@ public class AgentChatHttpUtil {
         requestJson.put("scenic_area_id", visitorSession.getScenicAreaId());
         requestJson.put("user_nickname", normalUser.getNickname());
         requestJson.put("age", normalUser.getAge());
+        requestJson.put("user_name", normalUser.getUsername());
         requestJson.put("gender", normalUser.getGender() == null ? null : String.valueOf(normalUser.getGender()));
         requestJson.put("message_type", defaultMessageType(chatAskDTO.getMessageType()));
         requestJson.put("voice_text", chatAskDTO.getVoiceText());
+        JSONObject userProfile = buildUserProfile(visitorSession.getUserId());
+        if (userProfile != null) {
+            requestJson.put("user_profile", userProfile);
+        }
+        log.info("Agent 问答请求用户画像状态，userId={}, hasProfile={}",
+                visitorSession.getUserId(), userProfile != null && !userProfile.isEmpty());
 
         String responseBody = postJson("/chat", requestJson.toJSONString(), visitorSession.getSessionCode(), "问答");
         AgentChatResponseVO responseVO = JSON.parseObject(responseBody, AgentChatResponseVO.class);
@@ -85,6 +98,56 @@ public class AgentChatHttpUtil {
             throw new BaseException(defaultIfBlank(responseVO.getMessage(), "Agent 聊天处理失败"));
         }
         return responseVO;
+    }
+
+    private JSONObject buildUserProfile(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+
+        UserDigitalProfile profile = userDigitalProfileMapper.getByUserId(userId);
+        if (profile == null) {
+            return null;
+        }
+
+        if (StringUtils.hasText(profile.getProfileJson())) {
+            try {
+                JSONObject profileJson = JSON.parseObject(profile.getProfileJson());
+                if (profileJson != null && !profileJson.isEmpty()) {
+                    return profileJson;
+                }
+            } catch (RuntimeException ex) {
+                log.warn("解析用户数字画像 JSON 失败，userId={}", userId, ex);
+            }
+        }
+
+        JSONObject profileJson = new JSONObject(true);
+        profileJson.put("profileName", profile.getProfileName());
+        profileJson.put("interestTags", parseJsonArrayField(profile.getInterestTags()));
+        profileJson.put("focusTopics", parseJsonArrayField(profile.getFocusTopics()));
+        profileJson.put("serviceNeeds", parseJsonArrayField(profile.getServiceNeeds()));
+        profileJson.put("knowledgeGaps", parseJsonArrayField(profile.getKnowledgeGaps()));
+        profileJson.put("travelStyle", profile.getTravelStyle());
+        profileJson.put("activityLevel", profile.getActivityLevel());
+        profileJson.put("sentimentTendency", profile.getSentimentTendency());
+        profileJson.put("sentimentScoreAvg", profile.getSentimentScoreAvg());
+        profileJson.put("profileScore", profile.getProfileScore());
+        profileJson.put("sourceSessionCount", profile.getSourceSessionCount());
+        profileJson.put("lastAnalyzedDate", profile.getLastAnalyzedDate());
+        return profileJson;
+    }
+
+    private List<String> parseJsonArrayField(String jsonArrayText) {
+        if (!StringUtils.hasText(jsonArrayText)) {
+            return List.of();
+        }
+        try {
+            List<String> values = JSON.parseArray(jsonArrayText, String.class);
+            return values == null ? List.of() : values;
+        } catch (RuntimeException ex) {
+            log.warn("解析用户数字画像数组字段失败，json={}", jsonArrayText, ex);
+            return List.of();
+        }
     }
 
     /**

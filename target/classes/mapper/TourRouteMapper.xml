@@ -110,16 +110,16 @@
                trg.version as geo_version
         from tour_route tr
                  left join (
-            select a.route_id, a.geojson, a.version
+            select a.route_id, a.scenic_area_id, a.geojson, a.version
             from tour_route_geo a
                      inner join (
-                select route_id, max(version) as max_version
+                select route_id, scenic_area_id, max(version) as max_version
                 from tour_route_geo
                 where status = 1
-                group by route_id
-            ) b on a.route_id = b.route_id and a.version = b.max_version
+                group by route_id, scenic_area_id
+            ) b on a.route_id = b.route_id and a.scenic_area_id = b.scenic_area_id and a.version = b.max_version
             where a.status = 1
-        ) trg on tr.id = trg.route_id
+        ) trg on tr.id = trg.route_id and tr.scenic_area_id = trg.scenic_area_id
         where tr.scenic_area_id = #{scenicAreaId}
           and tr.status = 1
           and tr.deleted = 0

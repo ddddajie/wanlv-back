@@ -14,6 +14,8 @@ public class TourRouteGeoDTO implements Serializable {
 
     private Long routeId; // 路线ID
 
+    private Long scenicAreaId; // 所属景区ID
+
     private String geojson; // 路线GeoJSON数据
 
     private Integer version; // 版本号

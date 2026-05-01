@@ -177,6 +177,7 @@ export interface TourRouteVO {
 export interface TourRouteGeoVO {
   id: number
   routeId: number
+  scenicAreaId: number
   geojson: string
   version: number
   status: number
@@ -184,6 +185,11 @@ export interface TourRouteGeoVO {
   updateTime: string | null
 }
 ```
+
+说明：
+- `scenicAreaId` 是路线轨迹冗余的所属景区 ID，后端会根据 `routeId` 对应路线的 `scenicAreaId` 写入。
+- 新增/更新轨迹时前端可以传 `scenicAreaId` 用于校验；如果传入值和路线所属景区不一致，后端会返回失败。
+- 地图初始化和路线详情只会使用与路线所属景区一致的轨迹数据。
 
 ### 3.5 空间要素对象 `ScenicGeoFeatureVO`
 
@@ -583,6 +589,7 @@ export interface RouteDetailVO {
     "routeGeo": {
       "id": 31,
       "routeId": 21,
+      "scenicAreaId": 1,
       "geojson": "{\"type\":\"LineString\",\"coordinates\":[[120.1,30.2],[120.2,30.3]]}",
       "version": 2,
       "status": 1
@@ -620,6 +627,7 @@ export interface RouteDetailVO {
 ```json
 {
   "routeId": 21,
+  "scenicAreaId": 1,
   "geojson": "{\"type\":\"LineString\",\"coordinates\":[[120.1,30.2],[120.2,30.3]]}",
   "version": 1,
   "status": 1
@@ -629,11 +637,31 @@ export interface RouteDetailVO {
 说明：
 
 - 如果不传 `version`，后端会自动按当前最大版本号递增
+- `scenicAreaId` 建议前端传入当前页面景区 ID，后端会校验它必须和 `routeId` 对应路线的所属景区一致；最终入库值以后端查询到的路线所属景区为准。
 
 ## 5.14 更新路线几何数据
 
 - 路径：`PUT /map/route-geos`
 - 用途：更新指定版本的路线几何数据
+
+请求示例：
+
+```json
+{
+  "id": 8,
+  "routeId": 21,
+  "scenicAreaId": 1,
+  "geojson": "{\"type\":\"LineString\",\"coordinates\":[[120.1,30.2],[120.2,30.3]]}",
+  "version": 2,
+  "status": 1
+}
+```
+
+说明：
+
+- `routeId` 可不传；不传时沿用原轨迹绑定的路线。
+- 如果传 `routeId`，后端会按新路线重新同步 `scenicAreaId`。
+- 如果传 `scenicAreaId`，必须和最终路线所属景区一致。
 
 ## 5.15 路线几何列表
 
@@ -882,10 +910,19 @@ export const pageRoutesApi = (params: {
 export const getRouteDetailApi = (id: number) =>
   request.get(`/map/routes/${id}`)
 
-export const createRouteGeoApi = (data: any) =>
+export interface RouteGeoPayload {
+  id?: number
+  routeId?: number
+  scenicAreaId?: number
+  geojson?: string
+  version?: number
+  status?: number
+}
+
+export const createRouteGeoApi = (data: RouteGeoPayload) =>
   request.post('/map/route-geos', data)
 
-export const updateRouteGeoApi = (data: any) =>
+export const updateRouteGeoApi = (data: RouteGeoPayload) =>
   request.put('/map/route-geos', data)
 
 export const listRouteGeosApi = (routeId: number) =>
@@ -915,6 +952,7 @@ export const createInteractionLogApi = (data: any) =>
 - 删除接口当前未补，景区、景点、路线主要支持新增、更新、查询
 - `mapBoundsJson`、`geojson`、`agentResultJson` 这些字段本质上都是字符串，前端需要自行 `JSON.parse`
 - 路线详情接口中的 `routeGeo` 可能为空，前端不能假设每条路线都已录入轨迹
+- 路线轨迹对象 `TourRouteGeoVO` 已包含 `scenicAreaId`；前端新增/更新轨迹时建议带上当前景区 ID，后端会做一致性校验
 - 路线更新时如果传了 `routeSpots`，后端会按新的数组整体覆盖旧的路线景点关系
 
 ---

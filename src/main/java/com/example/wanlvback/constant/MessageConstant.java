@@ -29,4 +29,6 @@ public class MessageConstant {
     public static final String SUPER_ADMIN_AUTH_FAIL = "超级管理员账号或密码错误";
     public static final String ASK_CONTENT_REQUIRED = "提问内容不能为空";
     public static final String USER_NOT_FOUND = "用户不存在";
+    public static final String USER_PROFILE_NOT_FOUND = "用户数字画像不存在";
+    public static final String USER_PROFILE_SOURCE_EMPTY = "当前用户暂无可生成画像的日报数据";
 }

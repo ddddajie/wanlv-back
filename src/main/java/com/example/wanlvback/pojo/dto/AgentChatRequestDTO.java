@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.util.Map;
 
 /**
  * 后端转发给 Agent 的问答请求参数
@@ -35,6 +36,10 @@ public class AgentChatRequestDTO implements Serializable {
     @JsonProperty("user_nickname")
     private String userNickname; // 用户昵称
 
+    @JSONField(name = "user_name")
+    @JsonProperty("user_name")
+    private String userName; // 用户账号
+
     private Integer age; // 用户年龄
 
     private String gender; // 用户性别
@@ -46,4 +51,8 @@ public class AgentChatRequestDTO implements Serializable {
     @JSONField(name = "voice_text")
     @JsonProperty("voice_text")
     private String voiceText; // 语音转文字文本
+
+    @JSONField(name = "user_profile")
+    @JsonProperty("user_profile")
+    private Map<String, Object> userProfile; // 用户数字画像，可为空
 }

@@ -242,6 +242,10 @@ public class MapServiceImpl implements MapService {
         TourRoute existRoute = requireTourRoute(tourRouteDTO.getId());
         Long scenicAreaId = tourRouteDTO.getScenicAreaId() == null ? existRoute.getScenicAreaId() : tourRouteDTO.getScenicAreaId();
         requireScenicArea(scenicAreaId);
+        if (!scenicAreaId.equals(existRoute.getScenicAreaId())
+                && !CollectionUtils.isEmpty(tourRouteGeoMapper.listByRouteId(tourRouteDTO.getId()))) {
+            throw new BaseException("路线已有轨迹数据，不能直接修改所属景区");
+        }
 
         TourRoute tourRoute = new TourRoute();
         BeanUtils.copyProperties(tourRouteDTO, tourRoute);
@@ -272,6 +276,10 @@ public class MapServiceImpl implements MapService {
             throw new BaseException("路线不存在或未启用");
         }
         TourRouteGeo routeGeo = tourRouteGeoMapper.getLatestActiveByRouteId(id);
+        if (routeGeo != null && routeGeo.getScenicAreaId() != null
+                && !route.getScenicAreaId().equals(routeGeo.getScenicAreaId())) {
+            routeGeo = null;
+        }
         List<RouteSpotDetailVO> spots = tourRouteSpotMapper.listDetailByRouteId(id);
         return RouteDetailVO.builder()
                 .route(buildTourRouteVO(route))
@@ -284,11 +292,13 @@ public class MapServiceImpl implements MapService {
     @Transactional(rollbackFor = Exception.class)
     public TourRouteGeoVO createTourRouteGeo(TourRouteGeoDTO tourRouteGeoDTO) {
         validateRouteGeoForCreate(tourRouteGeoDTO);
-        requireTourRoute(tourRouteGeoDTO.getRouteId());
+        TourRoute route = requireTourRoute(tourRouteGeoDTO.getRouteId());
+        validateRouteGeoScenicArea(tourRouteGeoDTO.getScenicAreaId(), route);
 
         LocalDateTime now = LocalDateTime.now();
         TourRouteGeo tourRouteGeo = new TourRouteGeo();
         BeanUtils.copyProperties(tourRouteGeoDTO, tourRouteGeo);
+        tourRouteGeo.setScenicAreaId(route.getScenicAreaId());
         tourRouteGeo.setVersion(resolveGeoVersion(tourRouteGeoDTO));
         tourRouteGeo.setStatus(defaultStatus(tourRouteGeoDTO.getStatus()));
         tourRouteGeo.setCreateTime(now);
@@ -354,7 +364,7 @@ public class MapServiceImpl implements MapService {
         Long routeGeoId = null;
         boolean saved = Boolean.TRUE.equals(request.getSaveAsVersion());
         if (saved) {
-            TourRouteGeo savedGeo = saveGeneratedRouteGeo(routeId, geojson, version, request);
+            TourRouteGeo savedGeo = saveGeneratedRouteGeo(routeId, route.getScenicAreaId(), geojson, version, request);
             routeGeoId = savedGeo.getId();
             updateRouteDistance(routeId, distanceMeters);
         }
@@ -384,12 +394,14 @@ public class MapServiceImpl implements MapService {
         if (existGeo == null) {
             throw new BaseException("路线几何数据不存在");
         }
-        if (tourRouteGeoDTO.getRouteId() != null) {
-            requireTourRoute(tourRouteGeoDTO.getRouteId());
-        }
+        Long routeId = tourRouteGeoDTO.getRouteId() == null ? existGeo.getRouteId() : tourRouteGeoDTO.getRouteId();
+        TourRoute route = requireTourRoute(routeId);
+        validateRouteGeoScenicArea(tourRouteGeoDTO.getScenicAreaId(), route);
 
         TourRouteGeo tourRouteGeo = new TourRouteGeo();
         BeanUtils.copyProperties(tourRouteGeoDTO, tourRouteGeo);
+        tourRouteGeo.setRouteId(routeId);
+        tourRouteGeo.setScenicAreaId(route.getScenicAreaId());
         tourRouteGeoMapper.updateById(tourRouteGeo);
         return buildTourRouteGeoVO(tourRouteGeoMapper.getById(tourRouteGeoDTO.getId()));
     }
@@ -807,6 +819,7 @@ public class MapServiceImpl implements MapService {
     }
 
     private TourRouteGeo saveGeneratedRouteGeo(Long routeId,
+                                               Long scenicAreaId,
                                                JSONObject geojson,
                                                Integer version,
                                                RouteGeoGenerateDTO request) {
@@ -824,6 +837,7 @@ public class MapServiceImpl implements MapService {
 
         TourRouteGeo routeGeo = new TourRouteGeo();
         routeGeo.setRouteId(routeId);
+        routeGeo.setScenicAreaId(scenicAreaId);
         routeGeo.setGeojson(geojson.toJSONString());
         routeGeo.setVersion(version);
         routeGeo.setStatus(status);
@@ -958,6 +972,12 @@ public class MapServiceImpl implements MapService {
             throw new BaseException("路线不存在");
         }
         return route;
+    }
+
+    private void validateRouteGeoScenicArea(Long scenicAreaId, TourRoute route) {
+        if (scenicAreaId != null && !scenicAreaId.equals(route.getScenicAreaId())) {
+            throw new BaseException("路线轨迹所属景区必须和路线所属景区一致");
+        }
     }
 
     private void validateScenicAreaForCreate(ScenicAreaDTO scenicAreaDTO) {
@@ -1255,6 +1275,7 @@ public class MapServiceImpl implements MapService {
         return TourRouteGeoVO.builder()
                 .id(tourRouteGeo.getId())
                 .routeId(tourRouteGeo.getRouteId())
+                .scenicAreaId(tourRouteGeo.getScenicAreaId())
                 .geojson(tourRouteGeo.getGeojson())
                 .version(tourRouteGeo.getVersion())
                 .status(tourRouteGeo.getStatus())
