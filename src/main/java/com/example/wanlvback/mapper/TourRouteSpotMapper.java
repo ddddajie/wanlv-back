@@ -13,6 +13,8 @@ public interface TourRouteSpotMapper {
 
     List<RouteSpotDetailVO> listDetailByRouteId(@Param("routeId") Long routeId);
 
+    List<Long> listRouteIdsBySpotId(@Param("spotId") Long spotId);
+
     int deleteByRouteId(@Param("routeId") Long routeId);
 
     int batchInsert(@Param("items") List<TourRouteSpot> items);

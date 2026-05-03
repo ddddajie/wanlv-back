@@ -81,4 +81,20 @@
         where id = #{id}
     </update>
 
+    <update id="disableByRouteId">
+        update tour_route_geo
+        set status = 0,
+            update_time = now()
+        where route_id = #{routeId}
+          and status != 0
+    </update>
+
+    <update id="disableByScenicAreaId">
+        update tour_route_geo
+        set status = 0,
+            update_time = now()
+        where scenic_area_id = #{scenicAreaId}
+          and status != 0
+    </update>
+
 </mapper>

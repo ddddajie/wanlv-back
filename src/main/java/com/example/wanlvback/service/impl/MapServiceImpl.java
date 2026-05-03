@@ -159,6 +159,17 @@ public class MapServiceImpl implements MapService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void deleteScenicArea(Long id) {
+        requireScenicArea(id);
+        tourRouteGeoMapper.disableByScenicAreaId(id);
+        tourRouteMapper.logicalDeleteByScenicAreaId(id);
+        scenicSpotMapper.logicalDeleteByScenicAreaId(id);
+        scenicGeoFeatureMapper.logicalDeleteByScenicAreaId(id);
+        scenicAreaMapper.logicalDeleteById(id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public ScenicSpotVO createScenicSpot(ScenicSpotDTO scenicSpotDTO) {
         validateScenicSpotForCreate(scenicSpotDTO);
         requireScenicArea(scenicSpotDTO.getScenicAreaId());
@@ -212,6 +223,17 @@ public class MapServiceImpl implements MapService {
             throw new BaseException("景点不存在或未启用");
         }
         return buildScenicSpotVO(scenicSpot);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteScenicSpot(Long id) {
+        requireScenicSpot(id);
+        List<Long> routeIds = tourRouteSpotMapper.listRouteIdsBySpotId(id);
+        for (Long routeId : routeIds) {
+            deleteTourRouteCascade(routeId);
+        }
+        scenicSpotMapper.logicalDeleteById(id);
     }
 
     @Override
@@ -286,6 +308,13 @@ public class MapServiceImpl implements MapService {
                 .routeGeo(buildTourRouteGeoVO(routeGeo))
                 .spots(spots)
                 .build();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteTourRoute(Long id) {
+        requireTourRoute(id);
+        deleteTourRouteCascade(id);
     }
 
     @Override
@@ -467,6 +496,19 @@ public class MapServiceImpl implements MapService {
                 .stream()
                 .map(this::buildScenicGeoFeatureVO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteScenicGeoFeature(Long id) {
+        if (id == null) {
+            throw new BaseException("空间要素ID不能为空");
+        }
+        ScenicGeoFeature existFeature = scenicGeoFeatureMapper.getById(id);
+        if (existFeature == null) {
+            throw new BaseException("空间要素不存在");
+        }
+        scenicGeoFeatureMapper.logicalDeleteById(id);
     }
 
     @Override
@@ -897,6 +939,11 @@ public class MapServiceImpl implements MapService {
 
     private double roundDouble(double value, int scale) {
         return BigDecimal.valueOf(value).setScale(scale, RoundingMode.HALF_UP).doubleValue();
+    }
+
+    private void deleteTourRouteCascade(Long routeId) {
+        tourRouteGeoMapper.disableByRouteId(routeId);
+        tourRouteMapper.logicalDeleteById(routeId);
     }
 
     private void replaceRouteSpots(Long routeId, Long scenicAreaId, List<TourRouteSpotDTO> routeSpots) {

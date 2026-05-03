@@ -19,4 +19,8 @@ public interface ScenicGeoFeatureMapper {
     int insert(ScenicGeoFeature scenicGeoFeature);
 
     int updateById(ScenicGeoFeature scenicGeoFeature);
+
+    int logicalDeleteById(@Param("id") Long id);
+
+    int logicalDeleteByScenicAreaId(@Param("scenicAreaId") Long scenicAreaId);
 }

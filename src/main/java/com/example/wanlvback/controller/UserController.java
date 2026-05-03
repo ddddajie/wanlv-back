@@ -13,6 +13,7 @@ import com.example.wanlvback.result.Result;
 import com.example.wanlvback.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -83,10 +84,24 @@ public class UserController {
         return Result.success(userService.getAdminUserById(id));
     }
 
+    @DeleteMapping("/admin/{id}")
+    public Result<Void> deleteAdminUser(@PathVariable("id") Long id) {
+        log.info("delete admin user request, id={}", id);
+        userService.deleteAdminUser(id);
+        return Result.success();
+    }
+
     @GetMapping("/normal/{id}")
     public Result<NormalUserVO> getNormalUser(@PathVariable("id") Long id) {
         log.info("收到普通用户详情查询请求，id={}", id);
         return Result.success(userService.getNormalUserById(id));
+    }
+
+    @DeleteMapping("/normal/{id}")
+    public Result<Void> deleteNormalUser(@PathVariable("id") Long id) {
+        log.info("delete normal user request, id={}", id);
+        userService.deleteNormalUser(id);
+        return Result.success();
     }
 
     @GetMapping("/admin/page")

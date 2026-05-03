@@ -24,4 +24,8 @@ public interface ScenicSpotMapper {
     int insert(ScenicSpot scenicSpot);
 
     int updateById(ScenicSpot scenicSpot);
+
+    int logicalDeleteById(@Param("id") Long id);
+
+    int logicalDeleteByScenicAreaId(@Param("scenicAreaId") Long scenicAreaId);
 }

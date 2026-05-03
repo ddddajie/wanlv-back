@@ -44,6 +44,8 @@ public interface SysAdminUserMapper {
      */
     int updateById(SysAdminUser adminUser);
 
+    int logicalDeleteById(@Param("id") Long id);
+
     /**
      * 更新管理员密码。
      *

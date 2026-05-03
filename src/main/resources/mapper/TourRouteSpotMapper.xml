@@ -56,6 +56,14 @@
         order by trs.sort_no is null asc, trs.sort_no asc, trs.id asc
     </select>
 
+    <select id="listRouteIdsBySpotId" resultType="java.lang.Long">
+        select distinct trs.route_id
+        from tour_route_spot trs
+                 inner join tour_route tr on trs.route_id = tr.id
+        where trs.spot_id = #{spotId}
+          and tr.deleted = 0
+    </select>
+
     <delete id="deleteByRouteId">
         delete
         from tour_route_spot

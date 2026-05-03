@@ -228,4 +228,13 @@
           and deleted = 0
     </update>
 
+    <update id="logicalDeleteById">
+        update scenic_area
+        set deleted = 1,
+            status = 0,
+            update_time = now()
+        where id = #{id}
+          and deleted = 0
+    </update>
+
 </mapper>

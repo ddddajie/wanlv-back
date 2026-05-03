@@ -199,4 +199,22 @@
           and deleted = 0
     </update>
 
+    <update id="logicalDeleteById">
+        update tour_route
+        set deleted = 1,
+            status = 0,
+            update_time = now()
+        where id = #{id}
+          and deleted = 0
+    </update>
+
+    <update id="logicalDeleteByScenicAreaId">
+        update tour_route
+        set deleted = 1,
+            status = 0,
+            update_time = now()
+        where scenic_area_id = #{scenicAreaId}
+          and deleted = 0
+    </update>
+
 </mapper>

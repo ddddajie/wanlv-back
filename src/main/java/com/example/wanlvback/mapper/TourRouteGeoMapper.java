@@ -19,4 +19,8 @@ public interface TourRouteGeoMapper {
     int insert(TourRouteGeo tourRouteGeo);
 
     int updateById(TourRouteGeo tourRouteGeo);
+
+    int disableByRouteId(@Param("routeId") Long routeId);
+
+    int disableByScenicAreaId(@Param("scenicAreaId") Long scenicAreaId);
 }

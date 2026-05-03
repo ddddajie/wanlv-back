@@ -291,6 +291,7 @@ export interface RouteDetailVO {
 - `PUT /map/scenic-areas`
 - `GET /map/scenic-areas/page`
 - `GET /map/scenic-areas/{id}`
+- `DELETE /map/scenic-areas/{id}`
 
 ### 4.2 景点管理
 
@@ -298,6 +299,7 @@ export interface RouteDetailVO {
 - `PUT /map/spots`
 - `GET /map/spots/page`
 - `GET /map/spots/{id}`
+- `DELETE /map/spots/{id}`
 
 ### 4.3 路线管理
 
@@ -305,6 +307,7 @@ export interface RouteDetailVO {
 - `PUT /map/routes`
 - `GET /map/routes/page`
 - `GET /map/routes/{id}`
+- `DELETE /map/routes/{id}`
 
 ### 4.4 路线几何管理
 
@@ -317,6 +320,7 @@ export interface RouteDetailVO {
 - `POST /map/geo-features`
 - `PUT /map/geo-features`
 - `GET /map/geo-features?scenicAreaId=...`
+- `DELETE /map/geo-features/{id}`
 
 ### 4.6 地图初始化
 
@@ -949,7 +953,7 @@ export const createInteractionLogApi = (data: any) =>
 ## 8. 当前注意事项
 
 - 当前管理接口未做权限隔离，联调时前端自行区分“管理端”和“游客端”
-- 删除接口当前未补，景区、景点、路线主要支持新增、更新、查询
+- 删除接口已支持景区、景点、路线、空间要素的逻辑删除；删除景区会同步逻辑删除其下景点、路线、空间要素，并禁用路线轨迹
 - `mapBoundsJson`、`geojson`、`agentResultJson` 这些字段本质上都是字符串，前端需要自行 `JSON.parse`
 - 路线详情接口中的 `routeGeo` 可能为空，前端不能假设每条路线都已录入轨迹
 - 路线轨迹对象 `TourRouteGeoVO` 已包含 `scenicAreaId`；前端新增/更新轨迹时建议带上当前景区 ID，后端会做一致性校验

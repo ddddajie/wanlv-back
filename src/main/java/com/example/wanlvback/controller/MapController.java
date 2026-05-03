@@ -20,6 +20,7 @@ import com.example.wanlvback.result.Result;
 import com.example.wanlvback.service.MapService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -70,6 +71,13 @@ public class MapController {
         return Result.success(mapService.getScenicAreaById(id));
     }
 
+    @DeleteMapping("/scenic-areas/{id}")
+    public Result<Void> deleteScenicArea(@PathVariable Long id) {
+        log.info("delete scenic area request, id={}", id);
+        mapService.deleteScenicArea(id);
+        return Result.success();
+    }
+
     @PostMapping("/spots")
     public Result<ScenicSpotVO> createScenicSpot(@RequestBody ScenicSpotDTO scenicSpotDTO) {
         log.info("收到景点新增请求, scenicAreaId={}, spotName={}",
@@ -101,6 +109,13 @@ public class MapController {
         return Result.success(mapService.getScenicSpotDetail(id));
     }
 
+    @DeleteMapping("/spots/{id}")
+    public Result<Void> deleteScenicSpot(@PathVariable Long id) {
+        log.info("delete scenic spot request, id={}", id);
+        mapService.deleteScenicSpot(id);
+        return Result.success();
+    }
+
     @PostMapping("/routes")
     public Result<TourRouteVO> createTourRoute(@RequestBody TourRouteDTO tourRouteDTO) {
         log.info("收到路线新增请求, scenicAreaId={}, routeName={}",
@@ -130,6 +145,13 @@ public class MapController {
     public Result<RouteDetailVO> getRouteDetail(@PathVariable Long id) {
         log.info("收到路线详情请求, id={}", id);
         return Result.success(mapService.getRouteDetail(id));
+    }
+
+    @DeleteMapping("/routes/{id}")
+    public Result<Void> deleteTourRoute(@PathVariable Long id) {
+        log.info("delete tour route request, id={}", id);
+        mapService.deleteTourRoute(id);
+        return Result.success();
     }
 
     @PostMapping("/route-geos")
@@ -175,6 +197,13 @@ public class MapController {
     public Result<List<ScenicGeoFeatureVO>> listGeoFeatures(@RequestParam Long scenicAreaId) {
         log.info("收到景区空间要素列表请求, scenicAreaId={}", scenicAreaId);
         return Result.success(mapService.listScenicGeoFeatures(scenicAreaId));
+    }
+
+    @DeleteMapping("/geo-features/{id}")
+    public Result<Void> deleteGeoFeature(@PathVariable Long id) {
+        log.info("delete geo feature request, id={}", id);
+        mapService.deleteScenicGeoFeature(id);
+        return Result.success();
     }
 
     @GetMapping("/init/{scenicAreaId}")

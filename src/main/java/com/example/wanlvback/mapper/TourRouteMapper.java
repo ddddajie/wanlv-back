@@ -27,4 +27,8 @@ public interface TourRouteMapper {
     int insert(TourRoute tourRoute);
 
     int updateById(TourRoute tourRoute);
+
+    int logicalDeleteById(@Param("id") Long id);
+
+    int logicalDeleteByScenicAreaId(@Param("scenicAreaId") Long scenicAreaId);
 }

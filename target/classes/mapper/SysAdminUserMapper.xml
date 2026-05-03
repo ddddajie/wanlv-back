@@ -137,6 +137,15 @@
           and deleted = 0
     </update>
 
+    <update id="logicalDeleteById">
+        update sys_admin_user
+        set deleted = 1,
+            status = 0,
+            update_time = now()
+        where id = #{id}
+          and deleted = 0
+    </update>
+
     <update id="updatePasswordById">
         update sys_admin_user
         set password = #{password},
@@ -168,6 +177,7 @@
                create_time,
                update_time
         from sys_admin_user
+        where deleted = 0
         order by create_time desc, id desc
     </select>
 

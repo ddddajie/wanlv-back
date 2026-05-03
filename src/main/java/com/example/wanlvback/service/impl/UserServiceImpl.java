@@ -267,9 +267,28 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteAdminUser(Long id) {
+        checkUserId(id, "管理员ID不能为空");
+        SysAdminUser adminUser = requireAdminUser(id);
+        if ("super_admin".equals(adminUser.getRole())) {
+            throw new BaseException("超级管理员不能删除");
+        }
+        sysAdminUserMapper.logicalDeleteById(id);
+    }
+
+    @Override
     public NormalUserVO getNormalUserById(Long id) {
         checkUserId(id, "普通用户ID不能为空");
         return buildNormalUserVO(requireNormalUser(id));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteNormalUser(Long id) {
+        checkUserId(id, "普通用户ID不能为空");
+        requireNormalUser(id);
+        sysNormalUserMapper.logicalDeleteById(id);
     }
 
     @Override

@@ -32,6 +32,8 @@ public interface MapService {
 
     ScenicAreaVO getScenicAreaById(Long id);
 
+    void deleteScenicArea(Long id);
+
     ScenicSpotVO createScenicSpot(ScenicSpotDTO scenicSpotDTO);
 
     ScenicSpotVO updateScenicSpot(ScenicSpotDTO scenicSpotDTO);
@@ -40,6 +42,8 @@ public interface MapService {
 
     ScenicSpotVO getScenicSpotDetail(Long id);
 
+    void deleteScenicSpot(Long id);
+
     TourRouteVO createTourRoute(TourRouteDTO tourRouteDTO);
 
     TourRouteVO updateTourRoute(TourRouteDTO tourRouteDTO);
@@ -47,6 +51,8 @@ public interface MapService {
     PageResult pageTourRoutes(Integer pageNum, Integer pageSize, Long scenicAreaId, String routeName, Integer status);
 
     RouteDetailVO getRouteDetail(Long id);
+
+    void deleteTourRoute(Long id);
 
     TourRouteGeoVO createTourRouteGeo(TourRouteGeoDTO tourRouteGeoDTO);
 
@@ -61,6 +67,8 @@ public interface MapService {
     ScenicGeoFeatureVO updateScenicGeoFeature(ScenicGeoFeatureDTO scenicGeoFeatureDTO);
 
     List<ScenicGeoFeatureVO> listScenicGeoFeatures(Long scenicAreaId);
+
+    void deleteScenicGeoFeature(Long id);
 
     MapInitVO getMapInitData(Long scenicAreaId);
 

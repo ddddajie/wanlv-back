@@ -44,6 +44,8 @@ public interface SysNormalUserMapper {
      */
     int updateById(SysNormalUser normalUser);
 
+    int logicalDeleteById(@Param("id") Long id);
+
     /**
      * 根据主键 ID 更新用户密码。
      *

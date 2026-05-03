@@ -107,6 +107,8 @@ http://127.0.0.1:8080
 | PUT | `/user/normal/update` | 更新普通用户信息 |
 | GET | `/user/admin/{id}` | 查询管理员详情 |
 | GET | `/user/normal/{id}` | 查询普通用户详情 |
+| DELETE | `/user/admin/{id}` | 删除管理员 |
+| DELETE | `/user/normal/{id}` | 删除普通用户 |
 | GET | `/user/admin/page` | 管理员分页列表 |
 | GET | `/user/normal/page` | 普通用户分页列表 |
 
@@ -139,14 +141,17 @@ http://127.0.0.1:8080
 | PUT | `/map/scenic-areas` | 更新景区 |
 | GET | `/map/scenic-areas/page` | 景区分页查询 |
 | GET | `/map/scenic-areas/{id}` | 景区详情 |
+| DELETE | `/map/scenic-areas/{id}` | 删除景区 |
 | POST | `/map/spots` | 新增景点 |
 | PUT | `/map/spots` | 更新景点 |
 | GET | `/map/spots/page` | 景点分页查询 |
 | GET | `/map/spots/{id}` | 景点详情 |
+| DELETE | `/map/spots/{id}` | 删除景点 |
 | POST | `/map/routes` | 新增路线 |
 | PUT | `/map/routes` | 更新路线 |
 | GET | `/map/routes/page` | 路线分页查询 |
 | GET | `/map/routes/{id}` | 路线详情 |
+| DELETE | `/map/routes/{id}` | 删除路线 |
 | POST | `/map/route-geos` | 新增路线几何 |
 | POST | `/map/routes/{routeId}/geo/generate` | 自动生成路线轨迹 |
 | PUT | `/map/route-geos` | 更新路线几何 |
@@ -154,6 +159,7 @@ http://127.0.0.1:8080
 | POST | `/map/geo-features` | 新增空间要素 |
 | PUT | `/map/geo-features` | 更新空间要素 |
 | GET | `/map/geo-features` | 查询景区空间要素 |
+| DELETE | `/map/geo-features/{id}` | 删除空间要素 |
 | GET | `/map/init/{scenicAreaId}` | 地图初始化数据 |
 | POST | `/map/interaction-logs` | 记录地图交互日志 |
 

@@ -79,6 +79,8 @@ public interface UserService {
      */
     AdminUserVO getAdminUserById(Long id);
 
+    void deleteAdminUser(Long id);
+
     /**
      * 查询普通用户详情。
      *
@@ -86,6 +88,8 @@ public interface UserService {
      * @return 普通用户详情
      */
     NormalUserVO getNormalUserById(Long id);
+
+    void deleteNormalUser(Long id);
 
     /**
      * 分页查询管理员列表。
