@@ -24,6 +24,10 @@
         <result column="recommended_level" property="recommendedLevel"/>
         <result column="sort_no" property="sortNo"/>
         <result column="status" property="status"/>
+        <result column="reservation_enabled" property="reservationEnabled"/>
+        <result column="reservation_notice" property="reservationNotice"/>
+        <result column="advance_reservation_days" property="advanceReservationDays"/>
+        <result column="min_advance_minutes" property="minAdvanceMinutes"/>
         <result column="deleted" property="deleted"/>
         <result column="create_by" property="createBy"/>
         <result column="create_time" property="createTime"/>
@@ -51,6 +55,10 @@
         recommended_level,
         sort_no,
         status,
+        reservation_enabled,
+        reservation_notice,
+        advance_reservation_days,
+        min_advance_minutes,
         deleted,
         create_by,
         create_time,
@@ -100,6 +108,21 @@
         order by recommended_level desc, sort_no asc, id asc
     </select>
 
+    <select id="listReservationEnabled" resultMap="ScenicSpotResultMap">
+        select <include refid="Base_Column_List"/>
+        from scenic_spot
+        where reservation_enabled = 1
+          and status = 1
+          and deleted = 0
+        <if test="scenicAreaId != null">
+            and scenic_area_id = #{scenicAreaId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            and spot_name like concat('%', #{keyword}, '%')
+        </if>
+        order by recommended_level desc, sort_no asc, id asc
+    </select>
+
     <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.ScenicSpot" useGeneratedKeys="true" keyProperty="id">
         insert into scenic_spot (
             scenic_area_id,
@@ -120,6 +143,10 @@
             recommended_level,
             sort_no,
             status,
+            reservation_enabled,
+            reservation_notice,
+            advance_reservation_days,
+            min_advance_minutes,
             deleted,
             create_by,
             create_time,
@@ -144,6 +171,10 @@
             #{recommendedLevel},
             #{sortNo},
             #{status},
+            #{reservationEnabled},
+            #{reservationNotice},
+            #{advanceReservationDays},
+            #{minAdvanceMinutes},
             #{deleted},
             #{createBy},
             #{createTime},
@@ -208,6 +239,18 @@
             </if>
             <if test="status != null">
                 status = #{status},
+            </if>
+            <if test="reservationEnabled != null">
+                reservation_enabled = #{reservationEnabled},
+            </if>
+            <if test="reservationNotice != null">
+                reservation_notice = #{reservationNotice},
+            </if>
+            <if test="advanceReservationDays != null">
+                advance_reservation_days = #{advanceReservationDays},
+            </if>
+            <if test="minAdvanceMinutes != null">
+                min_advance_minutes = #{minAdvanceMinutes},
             </if>
             <if test="updateBy != null">
                 update_by = #{updateBy},

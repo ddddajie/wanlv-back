@@ -55,4 +55,11 @@ public class ScenicSpotVO implements Serializable {
     private LocalDateTime createTime; // 创建时间
 
     private LocalDateTime updateTime; // 更新时间
+    private Integer reservationEnabled; // 是否支持预约：0-不支持，1-支持
+
+    private String reservationNotice; // 预约须知
+
+    private Integer advanceReservationDays; // 最多可提前预约天数
+
+    private Integer minAdvanceMinutes; // 最少提前预约分钟数
 }

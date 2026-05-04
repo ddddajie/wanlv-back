@@ -5,6 +5,7 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\context\BaseContext.
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\controller\ChatController.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\controller\InternalSchemaController.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\controller\MapController.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\controller\SpotReservationController.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\controller\UserController.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\controller\UserDigitalProfileController.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\exception\BaseException.java
@@ -14,6 +15,9 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\MapInteractio
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\ScenicAreaMapper.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\ScenicGeoFeatureMapper.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\ScenicSpotMapper.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\SpotReservationOrderMapper.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\SpotReservationRuleMapper.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\SpotReservationSlotMapper.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\SysAdminUserMapper.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\SysNormalUserMapper.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\TourRouteGeoMapper.java
@@ -39,6 +43,14 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\ScenicGeoFe
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\ScenicSpotDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\SessionAnalysisTriggerDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\SessionScenicAreaBindDTO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\SpotReservationCancelDTO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\SpotReservationCreateDTO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\SpotReservationRuleCreateDTO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\SpotReservationRuleStatusDTO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\SpotReservationRuleUpdateDTO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\SpotReservationSlotCreateDTO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\SpotReservationSlotGenerateDTO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\SpotReservationSlotUpdateDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\TourRouteDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\TourRouteGeoDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\TourRouteSpotDTO.java
@@ -47,6 +59,9 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\MapInter
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\ScenicArea.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\ScenicGeoFeature.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\ScenicSpot.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\SpotReservationOrder.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\SpotReservationRule.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\SpotReservationSlot.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\SysAdminUser.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\SysNormalUser.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\TourRoute.java
@@ -65,6 +80,7 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\MapInitVO.ja
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\MapInteractionLogVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\MapRouteVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\NormalUserVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\ReservationEnabledSpotVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\RouteDetailVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\RouteGeoGenerateVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\RouteGeoGenerateWarningVO.java
@@ -76,6 +92,11 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\SchemaColumn
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\SchemaTableVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\SessionAnalysisBatchItemVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\SessionAnalysisBatchVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\SpotReservationGenerateVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\SpotReservationOrderVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\SpotReservationRuleVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\SpotReservationSlotsQueryVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\SpotReservationSlotVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\TourRouteGeoVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\TourRouteSpotVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\TourRouteVO.java
@@ -87,10 +108,12 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\ChatService.
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\impl\ChatServiceImpl.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\impl\InternalSchemaServiceImpl.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\impl\MapServiceImpl.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\impl\SpotReservationServiceImpl.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\impl\UserDigitalProfileServiceImpl.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\impl\UserServiceImpl.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\InternalSchemaService.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\MapService.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\SpotReservationService.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\UserDigitalProfileService.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\UserService.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\task\SessionAnalysisScheduleTask.java

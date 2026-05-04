@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.SpotReservationRuleMapper">
+
+    <resultMap id="SpotReservationRuleResultMap" type="com.example.wanlvback.pojo.entity.SpotReservationRule">
+        <id column="id" property="id"/>
+        <result column="scenic_area_id" property="scenicAreaId"/>
+        <result column="spot_id" property="spotId"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="total_capacity" property="totalCapacity"/>
+        <result column="week_days" property="weekDays"/>
+        <result column="advance_days" property="advanceDays"/>
+        <result column="status" property="status"/>
+        <result column="remark" property="remark"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, scenic_area_id, spot_id, start_time, end_time, total_capacity, week_days,
+        advance_days, status, remark, create_by, create_time, update_by, update_time
+    </sql>
+
+    <select id="getById" resultMap="SpotReservationRuleResultMap">
+        select <include refid="Base_Column_List"/>
+        from spot_reservation_rule
+        where id = #{id}
+        limit 1
+    </select>
+
+    <select id="pageQuery" resultMap="SpotReservationRuleResultMap">
+        select <include refid="Base_Column_List"/>
+        from spot_reservation_rule
+        where 1 = 1
+        <if test="scenicAreaId != null">
+            and scenic_area_id = #{scenicAreaId}
+        </if>
+        <if test="spotId != null">
+            and spot_id = #{spotId}
+        </if>
+        <if test="status != null">
+            and status = #{status}
+        </if>
+        order by id desc
+    </select>
+
+    <select id="listEnabledForGenerate" resultMap="SpotReservationRuleResultMap">
+        select r.id,
+               r.scenic_area_id,
+               r.spot_id,
+               r.start_time,
+               r.end_time,
+               r.total_capacity,
+               r.week_days,
+               r.advance_days,
+               r.status,
+               r.remark,
+               r.create_by,
+               r.create_time,
+               r.update_by,
+               r.update_time
+        from spot_reservation_rule r
+        inner join scenic_spot s on s.id = r.spot_id
+        where r.status = 1
+          and s.status = 1
+          and s.deleted = 0
+          and s.reservation_enabled = 1
+        <if test="scenicAreaId != null">
+            and r.scenic_area_id = #{scenicAreaId}
+        </if>
+        <if test="spotId != null">
+            and r.spot_id = #{spotId}
+        </if>
+        order by r.spot_id asc, r.start_time asc
+    </select>
+
+    <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.SpotReservationRule" useGeneratedKeys="true" keyProperty="id">
+        insert into spot_reservation_rule (
+            scenic_area_id, spot_id, start_time, end_time, total_capacity, week_days,
+            advance_days, status, remark, create_by, create_time, update_by, update_time
+        ) values (
+            #{scenicAreaId}, #{spotId}, #{startTime}, #{endTime}, #{totalCapacity}, #{weekDays},
+            #{advanceDays}, #{status}, #{remark}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.example.wanlvback.pojo.entity.SpotReservationRule">
+        update spot_reservation_rule
+        <set>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="totalCapacity != null">total_capacity = #{totalCapacity},</if>
+            <if test="weekDays != null">week_days = #{weekDays},</if>
+            <if test="advanceDays != null">advance_days = #{advanceDays},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now()
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        update spot_reservation_rule
+        set status = #{status},
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now()
+        where id = #{id}
+    </update>
+
+</mapper>

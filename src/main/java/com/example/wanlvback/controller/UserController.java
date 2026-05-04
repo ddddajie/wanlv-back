@@ -35,18 +35,27 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    /**
+     * 初始化系统超级管理员账号。
+     */
     @RequestMapping("/init")
     public Result<String> initSuperAdmin() {
         log.info("收到初始化超级管理员请求");
         return Result.success(userService.initSuperAdmin());
     }
 
+    /**
+     * 管理员登录。
+     */
     @PostMapping("/admin/login")
     public Result<UserLoginVO> adminLogin(@RequestBody AdminLoginDTO adminLoginDTO) {
         log.info("收到管理员登录请求，username={}", adminLoginDTO.getUsername());
         return Result.success(userService.adminLogin(adminLoginDTO));
     }
 
+    /**
+     * 新增管理员账号。
+     */
     @PostMapping("/admin/add")
     public Result<UserLoginVO> createAdmin(@RequestBody AdminCreateDTO adminCreateDTO) {
         log.info("收到新增管理员请求，operator={}, target={}",
@@ -54,56 +63,83 @@ public class UserController {
         return Result.success(userService.createAdmin(adminCreateDTO));
     }
 
+    /**
+     * 注册普通用户账号。
+     */
     @PostMapping("/normal/register")
     public Result<UserLoginVO> registerNormalUser(@RequestBody NormalUserRegisterDTO registerDTO) {
         log.info("收到普通用户注册请求，username={}", registerDTO.getUsername());
         return Result.success(userService.registerNormalUser(registerDTO));
     }
 
+    /**
+     * 普通用户登录。
+     */
     @PostMapping("/normal/login")
     public Result<UserLoginVO> normalLogin(@RequestBody NormalUserLoginDTO loginDTO) {
         log.info("收到普通用户登录请求，username={}", loginDTO.getUsername());
         return Result.success(userService.normalLogin(loginDTO));
     }
 
+    /**
+     * 更新管理员账号信息。
+     */
     @PutMapping("/admin/update")
     public Result<AdminUserVO> updateAdminUser(@RequestBody AdminUserUpdateDTO updateDTO) {
         log.info("收到管理员信息更新请求，id={}", updateDTO.getId());
         return Result.success(userService.updateAdminUser(updateDTO));
     }
 
+    /**
+     * 更新普通用户账号信息。
+     */
     @PutMapping("/normal/update")
     public Result<NormalUserVO> updateNormalUser(@RequestBody NormalUserUpdateDTO updateDTO) {
         log.info("收到普通用户信息更新请求，id={}", updateDTO.getId());
         return Result.success(userService.updateNormalUser(updateDTO));
     }
 
+    /**
+     * 查询管理员账号详情。
+     */
     @GetMapping("/admin/{id}")
     public Result<AdminUserVO> getAdminUser(@PathVariable("id") Long id) {
         log.info("收到管理员详情查询请求，id={}", id);
         return Result.success(userService.getAdminUserById(id));
     }
 
+    /**
+     * 删除指定管理员账号。
+     */
     @DeleteMapping("/admin/{id}")
     public Result<Void> deleteAdminUser(@PathVariable("id") Long id) {
-        log.info("delete admin user request, id={}", id);
+        log.info("收到管理员删除请求，id={}", id);
         userService.deleteAdminUser(id);
         return Result.success();
     }
 
+    /**
+     * 查询普通用户账号详情。
+     */
     @GetMapping("/normal/{id}")
     public Result<NormalUserVO> getNormalUser(@PathVariable("id") Long id) {
         log.info("收到普通用户详情查询请求，id={}", id);
         return Result.success(userService.getNormalUserById(id));
     }
 
+    /**
+     * 删除指定普通用户账号。
+     */
     @DeleteMapping("/normal/{id}")
     public Result<Void> deleteNormalUser(@PathVariable("id") Long id) {
-        log.info("delete normal user request, id={}", id);
+        log.info("收到普通用户删除请求，id={}", id);
         userService.deleteNormalUser(id);
         return Result.success();
     }
 
+    /**
+     * 分页查询管理员账号列表。
+     */
     @GetMapping("/admin/page")
     public Result<PageResult> pageAdminUsers(@RequestParam(defaultValue = "1") Integer pageNum,
                                              @RequestParam(defaultValue = "10") Integer pageSize) {
@@ -111,6 +147,9 @@ public class UserController {
         return Result.success(userService.pageAdminUsers(pageNum, pageSize));
     }
 
+    /**
+     * 分页查询普通用户账号列表。
+     */
     @GetMapping("/normal/page")
     public Result<PageResult> pageNormalUsers(@RequestParam(defaultValue = "1") Integer pageNum,
                                               @RequestParam(defaultValue = "10") Integer pageSize) {

@@ -181,6 +181,9 @@ public class MapServiceImpl implements MapService {
         scenicSpot.setRecommendedLevel(defaultNumber(scenicSpotDTO.getRecommendedLevel(), 0));
         scenicSpot.setSortNo(defaultNumber(scenicSpotDTO.getSortNo(), 0));
         scenicSpot.setStatus(defaultStatus(scenicSpotDTO.getStatus()));
+        scenicSpot.setReservationEnabled(defaultNumber(scenicSpotDTO.getReservationEnabled(), 0));
+        scenicSpot.setAdvanceReservationDays(defaultNumber(scenicSpotDTO.getAdvanceReservationDays(), 7));
+        scenicSpot.setMinAdvanceMinutes(defaultNumber(scenicSpotDTO.getMinAdvanceMinutes(), 30));
         scenicSpot.setDeleted(0);
         scenicSpot.setCreateTime(now);
         scenicSpot.setUpdateTime(now);
@@ -1290,6 +1293,10 @@ public class MapServiceImpl implements MapService {
                 .recommendedLevel(scenicSpot.getRecommendedLevel())
                 .sortNo(scenicSpot.getSortNo())
                 .status(scenicSpot.getStatus())
+                .reservationEnabled(scenicSpot.getReservationEnabled())
+                .reservationNotice(scenicSpot.getReservationNotice())
+                .advanceReservationDays(scenicSpot.getAdvanceReservationDays())
+                .minAdvanceMinutes(scenicSpot.getMinAdvanceMinutes())
                 .createTime(scenicSpot.getCreateTime())
                 .updateTime(scenicSpot.getUpdateTime())
                 .build();

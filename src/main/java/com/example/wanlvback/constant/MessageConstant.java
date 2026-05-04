@@ -4,14 +4,6 @@ package com.example.wanlvback.constant;
  * 消息提示常量类。
  */
 public class MessageConstant {
-    public static final String PASSWORD_ERROR = "密码错误";
-    public static final String ACCOUNT_NOT_FOUND = "账号不存在";
-    public static final String ACCOUNT_IN_FOUND = "账号存在";
-    public static final String ACCOUNT_LOCKED = "账号被锁定";
-    public static final String UNKNOWN_ERROR = "未知错误";
-    public static final String USER_NOT_LOGIN = "用户未登录";
-    public static final String LOGIN_FAILED = "登录失败";
-
     public static final String USER_ID_REQUIRED = "用户ID不能为空";
     public static final String SESSION_NOT_FOUND = "当前日期暂无可分析的会话";
     public static final String SCENIC_AREA_ID_REQUIRED = "景区ID不能为空";

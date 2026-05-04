@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.SpotReservationOrderMapper">
+
+    <resultMap id="SpotReservationOrderResultMap" type="com.example.wanlvback.pojo.entity.SpotReservationOrder">
+        <id column="id" property="id"/>
+        <result column="reservation_no" property="reservationNo"/>
+        <result column="user_id" property="userId"/>
+        <result column="scenic_area_id" property="scenicAreaId"/>
+        <result column="spot_id" property="spotId"/>
+        <result column="slot_id" property="slotId"/>
+        <result column="visit_date" property="visitDate"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="visitor_count" property="visitorCount"/>
+        <result column="contact_name" property="contactName"/>
+        <result column="contact_phone" property="contactPhone"/>
+        <result column="status" property="status"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="agent_session_code" property="agentSessionCode"/>
+        <result column="client_request_id" property="clientRequestId"/>
+        <result column="remark" property="remark"/>
+        <result column="cancel_reason" property="cancelReason"/>
+        <result column="cancel_time" property="cancelTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, reservation_no, user_id, scenic_area_id, spot_id, slot_id, visit_date,
+        start_time, end_time, visitor_count, contact_name, contact_phone, status,
+        source_type, agent_session_code, client_request_id, remark, cancel_reason,
+        cancel_time, create_time, update_time
+    </sql>
+
+    <select id="getById" resultMap="SpotReservationOrderResultMap">
+        select <include refid="Base_Column_List"/>
+        from spot_reservation_order
+        where id = #{id}
+        limit 1
+    </select>
+
+    <select id="getByReservationNo" resultMap="SpotReservationOrderResultMap">
+        select <include refid="Base_Column_List"/>
+        from spot_reservation_order
+        where reservation_no = #{reservationNo}
+        limit 1
+    </select>
+
+    <select id="getByClientRequestId" resultMap="SpotReservationOrderResultMap">
+        select <include refid="Base_Column_List"/>
+        from spot_reservation_order
+        where client_request_id = #{clientRequestId}
+        limit 1
+    </select>
+
+    <select id="pageQuery" resultMap="SpotReservationOrderResultMap">
+        select <include refid="Base_Column_List"/>
+        from spot_reservation_order
+        where 1 = 1
+        <if test="scenicAreaId != null">and scenic_area_id = #{scenicAreaId}</if>
+        <if test="spotId != null">and spot_id = #{spotId}</if>
+        <if test="userId != null">and user_id = #{userId}</if>
+        <if test="visitDate != null">and visit_date = #{visitDate}</if>
+        <if test="status != null and status != ''">and status = #{status}</if>
+        <if test="sourceType != null and sourceType != ''">and source_type = #{sourceType}</if>
+        <if test="reservationNo != null and reservationNo != ''">and reservation_no = #{reservationNo}</if>
+        order by create_time desc, id desc
+    </select>
+
+    <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.SpotReservationOrder" useGeneratedKeys="true" keyProperty="id">
+        insert into spot_reservation_order (
+            reservation_no, user_id, scenic_area_id, spot_id, slot_id, visit_date,
+            start_time, end_time, visitor_count, contact_name, contact_phone, status,
+            source_type, agent_session_code, client_request_id, remark, cancel_reason,
+            cancel_time, create_time, update_time
+        ) values (
+            #{reservationNo}, #{userId}, #{scenicAreaId}, #{spotId}, #{slotId}, #{visitDate},
+            #{startTime}, #{endTime}, #{visitorCount}, #{contactName}, #{contactPhone}, #{status},
+            #{sourceType}, #{agentSessionCode}, #{clientRequestId}, #{remark}, #{cancelReason},
+            #{cancelTime}, #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <update id="cancelByReservationNo">
+        update spot_reservation_order
+        set status = 'CANCELLED',
+            cancel_reason = #{cancelReason},
+            cancel_time = now(),
+            update_time = now()
+        where reservation_no = #{reservationNo}
+          and user_id = #{userId}
+          and status in ('PENDING', 'CONFIRMED')
+    </update>
+
+</mapper>

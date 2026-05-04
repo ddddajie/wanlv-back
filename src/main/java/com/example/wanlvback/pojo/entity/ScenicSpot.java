@@ -60,6 +60,14 @@ public class ScenicSpot implements Serializable {
 
     private Integer status; // 状态
 
+    private Integer reservationEnabled; // 是否支持预约：0-不支持，1-支持
+
+    private String reservationNotice; // 预约须知
+
+    private Integer advanceReservationDays; // 最多可提前预约天数
+
+    private Integer minAdvanceMinutes; // 最少提前预约分钟数
+
     private Integer deleted; // 删除标记
 
     private Long createBy; // 创建人ID

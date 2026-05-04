@@ -21,6 +21,9 @@ public interface ScenicSpotMapper {
 
     List<ScenicSpot> listActiveByScenicAreaId(@Param("scenicAreaId") Long scenicAreaId);
 
+    List<ScenicSpot> listReservationEnabled(@Param("scenicAreaId") Long scenicAreaId,
+                                            @Param("keyword") String keyword);
+
     int insert(ScenicSpot scenicSpot);
 
     int updateById(ScenicSpot scenicSpot);
