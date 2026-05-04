@@ -30,6 +30,7 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\AdminCreate
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\AdminLoginDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\AdminUserUpdateDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\AgentChatRequestDTO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\AgentReservationOrderDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\AgentSessionAnalysisRequestDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\AnalysisMessageDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\ChatAskDTO.java
@@ -72,6 +73,11 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\VisitorM
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\entity\VisitorSession.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\AdminUserVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\AgentChatResponseVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\AgentReservationCancelResultVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\AgentReservationOrderResultVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\AgentReservationSlotMatchVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\AgentReservationSlotRecommendVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\AgentReservationSpotVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\AgentSessionAnalysisResponseVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\AgentSessionAnalysisVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\ChatAnswerVO.java

@@ -167,6 +167,58 @@ http://127.0.0.1:8080
 
 - `docs/map-api.md`
 
+### 景点预约
+
+景点预约模块负责景点预约规则、预约时段、预约订单，以及供 Agent 服务调用的预约工具接口。当前 `SpotReservationController` 统一使用 `/reservation` 作为接口前缀。
+
+主要能力：
+
+- 查询已开启预约的景点。
+- 查询指定景点某天可预约时段。
+- 创建、查询、取消用户预约订单。
+- 管理端维护预约规则、生成和维护预约时段、查询预约订单。
+- Agent 服务可调用专属接口完成景点搜索、时段匹配、下单、近期预约查询、推荐时段和取消预约。
+
+用户端接口入口：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/reservation/spots/enabled` | 查询已开启预约的景点列表 |
+| GET | `/reservation/slots` | 查询指定景点某天可预约时段 |
+| POST | `/reservation/orders` | 创建用户预约订单 |
+| GET | `/reservation/orders/my` | 分页查询用户个人预约订单 |
+| POST | `/reservation/orders/{reservationNo}/cancel` | 取消指定预约订单 |
+
+管理端接口入口：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/reservation/admin/rules` | 新增景点预约规则 |
+| PUT | `/reservation/admin/rules/{id}` | 更新指定景点预约规则 |
+| PUT | `/reservation/admin/rules/{id}/status` | 更新指定景点预约规则状态 |
+| GET | `/reservation/admin/rules` | 分页查询景点预约规则 |
+| POST | `/reservation/admin/slots/generate` | 根据预约规则批量生成预约时段 |
+| POST | `/reservation/admin/slots` | 手动新增预约时段 |
+| PUT | `/reservation/admin/slots/{id}` | 更新指定预约时段 |
+| GET | `/reservation/admin/slots` | 分页查询预约时段 |
+| GET | `/reservation/admin/orders` | 分页查询预约订单 |
+
+Agent 专属接口入口：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/reservation/agent/spots/search` | Agent 根据景点名称搜索可预约景点，返回匹配类型和置信度 |
+| GET | `/reservation/agent/slots/match` | Agent 查询指定时间附近的可预约时段 |
+| GET | `/reservation/agent/slots/recommend` | Agent 推荐指定日期范围内的可预约时段 |
+| POST | `/reservation/agent/orders` | Agent 创建预约订单，后端固定 `sourceType = AGENT` |
+| GET | `/reservation/agent/orders/recent` | Agent 查询用户近期预约订单 |
+| POST | `/reservation/agent/orders/{reservationNo}/cancel` | Agent 取消预约订单 |
+
+详细文档：
+
+- `docs/spot-reservation-api.md`
+- `docs/agent-reservation-api.md`
+
 ### Agent 聊天
 
 Agent 聊天模块负责接收前端问题，维护本地会话和消息记录，并将请求转发给独立 Agent 服务。
@@ -300,6 +352,8 @@ wanlv:
 | `docs/frontend-api.md` | 前端基础登录注册接口文档 |
 | `docs/user-management-api.md` | 用户管理接口文档 |
 | `docs/map-api.md` | 地图业务接口联调文档 |
+| `docs/spot-reservation-api.md` | 景点预约接口联调文档 |
+| `docs/agent-reservation-api.md` | Agent 景点预约工具接口文档 |
 | `docs/agent-chat-api.md` | Agent 聊天接口文档 |
 | `docs/session-daily-analysis-api.md` | 会话日报总结接口文档 |
 | `docs/agent-user-profile-integration.md` | Agent 接入用户数字画像说明 |

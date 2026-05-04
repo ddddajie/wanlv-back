@@ -7,6 +7,7 @@ import com.example.wanlvback.mapper.SpotReservationOrderMapper;
 import com.example.wanlvback.mapper.SpotReservationRuleMapper;
 import com.example.wanlvback.mapper.SpotReservationSlotMapper;
 import com.example.wanlvback.mapper.SysNormalUserMapper;
+import com.example.wanlvback.pojo.dto.AgentReservationOrderDTO;
 import com.example.wanlvback.pojo.dto.SpotReservationCancelDTO;
 import com.example.wanlvback.pojo.dto.SpotReservationCreateDTO;
 import com.example.wanlvback.pojo.dto.SpotReservationRuleCreateDTO;
@@ -21,6 +22,11 @@ import com.example.wanlvback.pojo.entity.SpotReservationOrder;
 import com.example.wanlvback.pojo.entity.SpotReservationRule;
 import com.example.wanlvback.pojo.entity.SpotReservationSlot;
 import com.example.wanlvback.pojo.entity.SysNormalUser;
+import com.example.wanlvback.pojo.vo.AgentReservationCancelResultVO;
+import com.example.wanlvback.pojo.vo.AgentReservationOrderResultVO;
+import com.example.wanlvback.pojo.vo.AgentReservationSlotMatchVO;
+import com.example.wanlvback.pojo.vo.AgentReservationSlotRecommendVO;
+import com.example.wanlvback.pojo.vo.AgentReservationSpotVO;
 import com.example.wanlvback.pojo.vo.ReservationEnabledSpotVO;
 import com.example.wanlvback.pojo.vo.SpotReservationGenerateVO;
 import com.example.wanlvback.pojo.vo.SpotReservationOrderVO;
@@ -39,10 +45,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -56,7 +65,13 @@ public class SpotReservationServiceImpl implements SpotReservationService {
     private static final String STATUS_PENDING = "PENDING";
     private static final String STATUS_CONFIRMED = "CONFIRMED";
     private static final String STATUS_FRONTEND = "FRONTEND";
+    private static final String SOURCE_AGENT = "AGENT";
+    private static final String MATCH_TYPE_EXACT = "EXACT";
+    private static final String MATCH_TYPE_NEAREST = "NEAREST";
+    private static final String MATCH_TYPE_FIRST_AVAILABLE = "FIRST_AVAILABLE";
+    private static final String MATCH_TYPE_NO_AVAILABLE = "NO_AVAILABLE";
     private static final DateTimeFormatter RESERVATION_NO_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final DateTimeFormatter AGENT_REPLY_DATE = DateTimeFormatter.ofPattern("yyyy年M月d日");
     private static final Set<String> SOURCE_TYPES = Set.of("FRONTEND", "AGENT", "ADMIN");
 
     @Autowired
@@ -305,6 +320,182 @@ public class SpotReservationServiceImpl implements SpotReservationService {
         return true;
     }
 
+    @Override
+    public List<AgentReservationSpotVO> searchAgentReservationSpots(Long scenicAreaId, String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            throw new BaseException("景点名称关键词不能为空");
+        }
+        return scenicSpotMapper.listReservationEnabled(scenicAreaId, keyword.trim()).stream().map(spot -> {
+            ScenicArea area = scenicAreaMapper.getById(spot.getScenicAreaId());
+            return AgentReservationSpotVO.builder()
+                    .spotId(spot.getId())
+                    .spotName(spot.getSpotName())
+                    .scenicAreaId(spot.getScenicAreaId())
+                    .scenicName(area == null ? null : area.getScenicName())
+                    .reservationEnabled(spot.getReservationEnabled())
+                    .reservationNotice(spot.getReservationNotice())
+                    .advanceReservationDays(spot.getAdvanceReservationDays())
+                    .minAdvanceMinutes(spot.getMinAdvanceMinutes())
+                    .matchType(resolveSpotMatchType(spot.getSpotName(), keyword))
+                    .confidence(calculateSpotConfidence(spot.getSpotName(), keyword))
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public AgentReservationSlotMatchVO matchAgentReservationSlot(Long spotId, LocalDate visitDate, LocalTime targetTime, Integer visitorCount) {
+        int requiredCount = visitorCount == null ? 1 : visitorCount;
+        if (requiredCount <= 0) {
+            throw new BaseException("预约人数必须大于0");
+        }
+
+        SpotReservationSlotsQueryVO queryVO = listAvailableSlots(spotId, visitDate);
+        List<SpotReservationSlotVO> candidateSlots = queryVO.getSlots().stream()
+                .filter(slot -> Boolean.TRUE.equals(slot.getAvailable()))
+                .filter(slot -> defaultNumber(slot.getRemainingCount(), 0) >= requiredCount)
+                .collect(Collectors.toList());
+
+        if (candidateSlots.isEmpty()) {
+            String replyText = String.format(Locale.CHINA, "%s在%s暂无满足%d人的可预约时段。",
+                    queryVO.getSpotName(), visitDate.format(AGENT_REPLY_DATE), requiredCount);
+            return AgentReservationSlotMatchVO.builder()
+                    .matchedSlot(null)
+                    .candidateSlots(candidateSlots)
+                    .matchType(MATCH_TYPE_NO_AVAILABLE)
+                    .replyText(replyText)
+                    .build();
+        }
+
+        if (targetTime == null) {
+            SpotReservationSlotVO matchedSlot = candidateSlots.get(0);
+            return AgentReservationSlotMatchVO.builder()
+                    .matchedSlot(matchedSlot)
+                    .candidateSlots(candidateSlots)
+                    .matchType(MATCH_TYPE_FIRST_AVAILABLE)
+                    .replyText(buildSlotMatchReply(queryVO.getSpotName(), matchedSlot, requiredCount, false, null))
+                    .build();
+        }
+
+        SpotReservationSlotVO exactSlot = candidateSlots.stream()
+                .filter(slot -> !targetTime.isBefore(slot.getStartTime()) && targetTime.isBefore(slot.getEndTime()))
+                .findFirst()
+                .orElse(null);
+        if (exactSlot != null) {
+            return AgentReservationSlotMatchVO.builder()
+                    .matchedSlot(exactSlot)
+                    .candidateSlots(candidateSlots)
+                    .matchType(MATCH_TYPE_EXACT)
+                    .replyText(buildSlotMatchReply(queryVO.getSpotName(), exactSlot, requiredCount, true, targetTime))
+                    .build();
+        }
+
+        SpotReservationSlotVO nearestSlot = candidateSlots.stream()
+                .min(Comparator.comparingLong(slot -> calculateSlotDistanceSeconds(slot, targetTime)))
+                .orElse(candidateSlots.get(0));
+        return AgentReservationSlotMatchVO.builder()
+                .matchedSlot(nearestSlot)
+                .candidateSlots(candidateSlots)
+                .matchType(MATCH_TYPE_NEAREST)
+                .replyText(buildSlotMatchReply(queryVO.getSpotName(), nearestSlot, requiredCount, false, targetTime))
+                .build();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AgentReservationOrderResultVO createAgentReservationOrder(AgentReservationOrderDTO dto) {
+        SpotReservationCreateDTO createDTO = new SpotReservationCreateDTO();
+        if (dto != null) {
+            BeanUtils.copyProperties(dto, createDTO);
+        }
+        SysNormalUser user = requireActiveUser(createDTO.getUserId());
+        createDTO.setContactName(resolveAgentContactName(user));
+        createDTO.setContactPhone(user.getPhone());
+        // Agent专属接口固定来源，避免工具调用方传错统计口径。
+        createDTO.setSourceType(SOURCE_AGENT);
+        SpotReservationOrderVO orderVO = createOrder(createDTO);
+        return AgentReservationOrderResultVO.builder()
+                .success(true)
+                .reservationNo(orderVO.getReservationNo())
+                .status(orderVO.getStatus())
+                .scenicAreaId(orderVO.getScenicAreaId())
+                .scenicName(orderVO.getScenicName())
+                .spotId(orderVO.getSpotId())
+                .spotName(orderVO.getSpotName())
+                .slotId(orderVO.getSlotId())
+                .visitDate(orderVO.getVisitDate())
+                .startTime(orderVO.getStartTime())
+                .endTime(orderVO.getEndTime())
+                .visitorCount(orderVO.getVisitorCount())
+                .replyText(buildOrderSuccessReply(orderVO))
+                .build();
+    }
+
+    @Override
+    public List<SpotReservationOrderVO> listAgentRecentOrders(Long userId, String status, Integer limit) {
+        if (userId == null) {
+            throw new BaseException("用户ID不能为空");
+        }
+        PageHelper.startPage(1, normalizeAgentLimit(limit, 5));
+        Page<SpotReservationOrder> page = orderMapper.pageQuery(null, null, userId, null, normalizeBlank(status), null, null);
+        return page.getResult().stream().map(this::buildOrderVO).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AgentReservationCancelResultVO cancelAgentReservationOrder(String reservationNo, SpotReservationCancelDTO dto) {
+        Boolean success = cancelOrder(reservationNo, dto);
+        String replyText = success ? String.format(Locale.CHINA, "已为你取消预约，预约编号 %s。", reservationNo) : "预约取消失败。";
+        return AgentReservationCancelResultVO.builder()
+                .success(success)
+                .reservationNo(reservationNo)
+                .replyText(replyText)
+                .build();
+    }
+
+    @Override
+    public AgentReservationSlotRecommendVO recommendAgentReservationSlots(Long spotId, LocalDate startDate, Integer days, LocalTime targetTime, Integer visitorCount, Integer limit) {
+        if (spotId == null || startDate == null) {
+            throw new BaseException("景点ID和开始日期不能为空");
+        }
+        int requiredCount = visitorCount == null ? 1 : visitorCount;
+        if (requiredCount <= 0) {
+            throw new BaseException("预约人数必须大于0");
+        }
+        ScenicSpot spot = requireSpot(spotId);
+        validateSpotReservationEnabled(spot);
+
+        int queryDays = normalizeAgentDays(days);
+        int resultLimit = normalizeAgentLimit(limit, 5);
+        LocalDate today = LocalDate.now();
+        LocalDate maxDate = today.plusDays(defaultNumber(spot.getAdvanceReservationDays(), 7));
+        LocalDate beginDate = startDate.isBefore(today) ? today : startDate;
+        List<SpotReservationSlotVO> recommendedSlots = new ArrayList<>();
+
+        for (int offset = 0; offset < queryDays && recommendedSlots.size() < resultLimit; offset++) {
+            LocalDate visitDate = beginDate.plusDays(offset);
+            if (visitDate.isAfter(maxDate)) {
+                break;
+            }
+            List<SpotReservationSlotVO> dateSlots = slotMapper.listBySpotAndDate(spotId, visitDate).stream()
+                    .map(slot -> buildSlotVO(slot, true))
+                    .filter(slot -> Boolean.TRUE.equals(slot.getAvailable()))
+                    .filter(slot -> defaultNumber(slot.getRemainingCount(), 0) >= requiredCount)
+                    .sorted(buildRecommendSlotComparator(targetTime))
+                    .collect(Collectors.toList());
+            for (SpotReservationSlotVO slot : dateSlots) {
+                if (recommendedSlots.size() >= resultLimit) {
+                    break;
+                }
+                recommendedSlots.add(slot);
+            }
+        }
+
+        return AgentReservationSlotRecommendVO.builder()
+                .recommendedSlots(recommendedSlots)
+                .replyText(buildRecommendSlotsReply(spot.getSpotName(), recommendedSlots, requiredCount))
+                .build();
+    }
+
     private void validateRuleCreate(SpotReservationRuleCreateDTO dto) {
         if (dto == null || dto.getScenicAreaId() == null || dto.getSpotId() == null) {
             throw new BaseException("景区ID和景点ID不能为空");
@@ -476,6 +667,124 @@ public class SpotReservationServiceImpl implements SpotReservationService {
         ScenicSpot spot = scenicSpotMapper.getById(order.getSpotId());
         SysNormalUser user = sysNormalUserMapper.getById(order.getUserId());
         return SpotReservationOrderVO.builder().id(order.getId()).reservationNo(order.getReservationNo()).userId(order.getUserId()).nickname(user == null ? null : user.getNickname()).scenicAreaId(order.getScenicAreaId()).scenicName(area == null ? null : area.getScenicName()).spotId(order.getSpotId()).spotName(spot == null ? null : spot.getSpotName()).slotId(order.getSlotId()).visitDate(order.getVisitDate()).startTime(order.getStartTime()).endTime(order.getEndTime()).visitorCount(order.getVisitorCount()).contactName(order.getContactName()).contactPhone(order.getContactPhone()).status(order.getStatus()).sourceType(order.getSourceType()).agentSessionCode(order.getAgentSessionCode()).clientRequestId(order.getClientRequestId()).remark(order.getRemark()).cancelReason(order.getCancelReason()).cancelTime(order.getCancelTime()).createTime(order.getCreateTime()).updateTime(order.getUpdateTime()).build();
+    }
+
+    private String buildSlotMatchReply(String spotName, SpotReservationSlotVO slot, int visitorCount, boolean exactMatch, LocalTime targetTime) {
+        if (slot == null) {
+            return null;
+        }
+        String slotText = formatSlotTime(slot.getStartTime(), slot.getEndTime());
+        if (targetTime == null) {
+            return String.format(Locale.CHINA, "已找到%s在%s %s的可预约时段，当前剩余%d个名额，可预约%d人。",
+                    spotName, slot.getVisitDate().format(AGENT_REPLY_DATE), slotText, slot.getRemainingCount(), visitorCount);
+        }
+        if (exactMatch) {
+            return String.format(Locale.CHINA, "已找到%s在%s %s的可预约时段，当前剩余%d个名额，可预约%d人。",
+                    spotName, slot.getVisitDate().format(AGENT_REPLY_DATE), slotText, slot.getRemainingCount(), visitorCount);
+        }
+        return String.format(Locale.CHINA, "未找到刚好覆盖%s的时段，已为你匹配到最近的可预约时段：%s，当前剩余%d个名额，可预约%d人。",
+                targetTime, slotText, slot.getRemainingCount(), visitorCount);
+    }
+
+    private String buildOrderSuccessReply(SpotReservationOrderVO orderVO) {
+        return String.format(Locale.CHINA, "已为你预约成功：%s，%s %s，%d人，预约编号 %s。",
+                orderVO.getSpotName(),
+                orderVO.getVisitDate().format(AGENT_REPLY_DATE),
+                formatSlotTime(orderVO.getStartTime(), orderVO.getEndTime()),
+                orderVO.getVisitorCount(),
+                orderVO.getReservationNo());
+    }
+
+    private String resolveAgentContactName(SysNormalUser user) {
+        if (StringUtils.hasText(user.getNickname())) {
+            return user.getNickname();
+        }
+        return user.getUsername();
+    }
+
+    private String resolveSpotMatchType(String spotName, String keyword) {
+        if (!StringUtils.hasText(spotName) || !StringUtils.hasText(keyword)) {
+            return "UNKNOWN";
+        }
+        String normalizedSpotName = spotName.trim();
+        String normalizedKeyword = keyword.trim();
+        if (normalizedSpotName.equals(normalizedKeyword)) {
+            return "NAME_EXACT";
+        }
+        if (normalizedSpotName.contains(normalizedKeyword)) {
+            return "NAME_CONTAINS";
+        }
+        return "NAME_FUZZY";
+    }
+
+    private Double calculateSpotConfidence(String spotName, String keyword) {
+        if (!StringUtils.hasText(spotName) || !StringUtils.hasText(keyword)) {
+            return 0.0D;
+        }
+        String normalizedSpotName = spotName.trim();
+        String normalizedKeyword = keyword.trim();
+        if (normalizedSpotName.equals(normalizedKeyword)) {
+            return 1.0D;
+        }
+        if (normalizedSpotName.contains(normalizedKeyword)) {
+            double ratio = (double) normalizedKeyword.length() / normalizedSpotName.length();
+            return Math.max(0.7D, Math.min(0.95D, ratio));
+        }
+        return 0.5D;
+    }
+
+    private Comparator<SpotReservationSlotVO> buildRecommendSlotComparator(LocalTime targetTime) {
+        Comparator<SpotReservationSlotVO> dateTimeComparator = Comparator
+                .comparing(SpotReservationSlotVO::getVisitDate)
+                .thenComparing(SpotReservationSlotVO::getStartTime)
+                .thenComparing(SpotReservationSlotVO::getSlotId);
+        if (targetTime == null) {
+            return dateTimeComparator;
+        }
+        return Comparator
+                .comparingLong((SpotReservationSlotVO slot) -> calculateSlotDistanceSeconds(slot, targetTime))
+                .thenComparing(dateTimeComparator);
+    }
+
+    private String buildRecommendSlotsReply(String spotName, List<SpotReservationSlotVO> slots, int visitorCount) {
+        if (slots.isEmpty()) {
+            return String.format(Locale.CHINA, "%s近期暂无满足%d人的可预约时段。", spotName, visitorCount);
+        }
+        SpotReservationSlotVO firstSlot = slots.get(0);
+        return String.format(Locale.CHINA, "已为你找到%s在%s %s等%d个可预约时段，可预约%d人。",
+                spotName,
+                firstSlot.getVisitDate().format(AGENT_REPLY_DATE),
+                formatSlotTime(firstSlot.getStartTime(), firstSlot.getEndTime()),
+                slots.size(),
+                visitorCount);
+    }
+
+    private int normalizeAgentDays(Integer days) {
+        if (days == null || days < 1) {
+            return 7;
+        }
+        return Math.min(days, 30);
+    }
+
+    private int normalizeAgentLimit(Integer limit, int defaultLimit) {
+        if (limit == null || limit < 1) {
+            return defaultLimit;
+        }
+        return Math.min(limit, 20);
+    }
+
+    private long calculateSlotDistanceSeconds(SpotReservationSlotVO slot, LocalTime targetTime) {
+        if (targetTime.isBefore(slot.getStartTime())) {
+            return Math.abs(Duration.between(targetTime, slot.getStartTime()).getSeconds());
+        }
+        if (!targetTime.isBefore(slot.getEndTime())) {
+            return Math.abs(Duration.between(slot.getEndTime(), targetTime).getSeconds());
+        }
+        return 0L;
+    }
+
+    private String formatSlotTime(LocalTime startTime, LocalTime endTime) {
+        return String.format(Locale.CHINA, "%s-%s", startTime, endTime);
     }
 
     private String generateReservationNo() {
