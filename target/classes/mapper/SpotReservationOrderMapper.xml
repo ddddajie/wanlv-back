@@ -70,6 +70,66 @@
         order by create_time desc, id desc
     </select>
 
+    <select id="getDashboardOrderSummary" resultType="com.example.wanlvback.pojo.vo.ReservationDashboardVO$TrendVO">
+        select
+            count(1) as orderCount,
+            coalesce(sum(visitor_count), 0) as visitorCount
+        from spot_reservation_order
+        where create_time &gt;= #{startTime}
+          and create_time &lt; #{endTime}
+        <if test="scenicAreaId != null">and scenic_area_id = #{scenicAreaId}</if>
+    </select>
+
+    <select id="listDashboardSourceDistribution" resultType="com.example.wanlvback.pojo.vo.ReservationDashboardVO$SourceDistributionVO">
+        select
+            source_type as sourceType,
+            count(1) as orderCount
+        from spot_reservation_order
+        where create_time &gt;= #{startTime}
+          and create_time &lt; #{endTime}
+        <if test="scenicAreaId != null">and scenic_area_id = #{scenicAreaId}</if>
+        group by source_type
+        order by orderCount desc, source_type asc
+    </select>
+
+    <select id="listDashboardStatusDistribution" resultType="com.example.wanlvback.pojo.vo.ReservationDashboardVO$StatusDistributionVO">
+        select
+            status,
+            count(1) as orderCount
+        from spot_reservation_order
+        where create_time &gt;= #{startTime}
+          and create_time &lt; #{endTime}
+        <if test="scenicAreaId != null">and scenic_area_id = #{scenicAreaId}</if>
+        group by status
+        order by orderCount desc, status asc
+    </select>
+
+    <select id="listDashboardTrend" resultType="com.example.wanlvback.pojo.vo.ReservationDashboardVO$TrendVO">
+        select
+            date(create_time) as date,
+            date_format(create_time, '%m-%d') as label,
+            count(1) as orderCount,
+            coalesce(sum(visitor_count), 0) as visitorCount
+        from spot_reservation_order
+        where create_time &gt;= #{startTime}
+          and create_time &lt; #{endTime}
+        <if test="scenicAreaId != null">and scenic_area_id = #{scenicAreaId}</if>
+        group by date(create_time), date_format(create_time, '%m-%d')
+        order by date(create_time) asc
+    </select>
+
+    <select id="listDashboardLiveOrders" resultMap="SpotReservationOrderResultMap">
+        select <include refid="Base_Column_List"/>
+        from spot_reservation_order
+        where (
+            (create_time &gt;= #{startTime} and create_time &lt; #{endTime})
+            or (cancel_time &gt;= #{startTime} and cancel_time &lt; #{endTime})
+        )
+        <if test="scenicAreaId != null">and scenic_area_id = #{scenicAreaId}</if>
+        order by coalesce(cancel_time, create_time) desc, id desc
+        limit #{limit}
+    </select>
+
     <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.SpotReservationOrder" useGeneratedKeys="true" keyProperty="id">
         insert into spot_reservation_order (
             reservation_no, user_id, scenic_area_id, spot_id, slot_id, visit_date,

@@ -27,6 +27,7 @@ import com.example.wanlvback.pojo.vo.AgentReservationOrderResultVO;
 import com.example.wanlvback.pojo.vo.AgentReservationSlotMatchVO;
 import com.example.wanlvback.pojo.vo.AgentReservationSlotRecommendVO;
 import com.example.wanlvback.pojo.vo.AgentReservationSpotVO;
+import com.example.wanlvback.pojo.vo.ReservationDashboardVO;
 import com.example.wanlvback.pojo.vo.ReservationEnabledSpotVO;
 import com.example.wanlvback.pojo.vo.SpotReservationGenerateVO;
 import com.example.wanlvback.pojo.vo.SpotReservationOrderVO;
@@ -52,8 +53,11 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -64,6 +68,9 @@ public class SpotReservationServiceImpl implements SpotReservationService {
 
     private static final String STATUS_PENDING = "PENDING";
     private static final String STATUS_CONFIRMED = "CONFIRMED";
+    private static final String STATUS_CANCELLED = "CANCELLED";
+    private static final String STATUS_COMPLETED = "COMPLETED";
+    private static final String STATUS_EXPIRED = "EXPIRED";
     private static final String STATUS_FRONTEND = "FRONTEND";
     private static final String SOURCE_AGENT = "AGENT";
     private static final String MATCH_TYPE_EXACT = "EXACT";
@@ -72,6 +79,8 @@ public class SpotReservationServiceImpl implements SpotReservationService {
     private static final String MATCH_TYPE_NO_AVAILABLE = "NO_AVAILABLE";
     private static final DateTimeFormatter RESERVATION_NO_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final DateTimeFormatter AGENT_REPLY_DATE = DateTimeFormatter.ofPattern("yyyy年M月d日");
+    private static final DateTimeFormatter DASHBOARD_TREND_LABEL = DateTimeFormatter.ofPattern("MM-dd");
+    private static final DateTimeFormatter DASHBOARD_ACTIVITY_TIME = DateTimeFormatter.ofPattern("MM-dd HH:mm");
     private static final Set<String> SOURCE_TYPES = Set.of("FRONTEND", "AGENT", "ADMIN");
 
     @Autowired
@@ -238,6 +247,40 @@ public class SpotReservationServiceImpl implements SpotReservationService {
         PageHelper.startPage(normalizePageNum(pageNum), normalizePageSize(pageSize));
         Page<SpotReservationOrder> page = orderMapper.pageQuery(scenicAreaId, spotId, userId, visitDate, normalizeBlank(status), normalizeBlank(sourceType), normalizeBlank(reservationNo));
         return new PageResult(page.getTotal(), page.getResult().stream().map(this::buildOrderVO).collect(Collectors.toList()));
+    }
+
+    @Override
+    public ReservationDashboardVO getAdminDashboard(Long scenicAreaId, LocalDate date) {
+        LocalDate statisticDate = date == null ? LocalDate.now() : date;
+        LocalDateTime startTime = statisticDate.atStartOfDay();
+        LocalDateTime endTime = statisticDate.plusDays(1).atStartOfDay();
+
+        ReservationDashboardVO.TrendVO todaySummary = orderMapper.getDashboardOrderSummary(scenicAreaId, startTime, endTime);
+        ReservationDashboardVO.TrendVO yesterdaySummary = orderMapper.getDashboardOrderSummary(scenicAreaId,
+                statisticDate.minusDays(1).atStartOfDay(), statisticDate.atStartOfDay());
+        List<ReservationDashboardVO.CapacitySpotVO> capacitySpots = slotMapper.listDashboardCapacitySpots(scenicAreaId, statisticDate);
+        List<ReservationDashboardVO.SourceDistributionVO> sourceDistribution = buildSourceDistribution(
+                orderMapper.listDashboardSourceDistribution(scenicAreaId, startTime, endTime), getOrderCount(todaySummary));
+        List<ReservationDashboardVO.StatusDistributionVO> statusDistribution = buildStatusDistribution(
+                orderMapper.listDashboardStatusDistribution(scenicAreaId, startTime, endTime), getOrderCount(todaySummary));
+        List<ReservationDashboardVO.PeakTimeVO> peakTimes = buildPeakTimes(
+                slotMapper.listDashboardPeakTimes(scenicAreaId, statisticDate, 4));
+        List<SpotReservationOrderVO> liveOrders = orderMapper.listDashboardLiveOrders(scenicAreaId, startTime, endTime, 10)
+                .stream().map(this::buildOrderVO).collect(Collectors.toList());
+
+        return ReservationDashboardVO.builder()
+                .scenicAreas(buildScenicAreaOptions())
+                .summary(buildDashboardSummary(todaySummary, yesterdaySummary, capacitySpots, statusDistribution))
+                .capacityRanks(capacitySpots.stream().limit(6).collect(Collectors.toList()))
+                .sourceDistribution(sourceDistribution)
+                .heatSpots(buildHeatSpots(capacitySpots))
+                .trend(buildDashboardTrend(scenicAreaId, statisticDate))
+                .statusDistribution(statusDistribution)
+                .peakTimes(peakTimes)
+                .hotSpotRanks(buildHotSpotRanks(capacitySpots))
+                .warnings(buildDashboardWarnings(capacitySpots, statusDistribution))
+                .liveActivities(buildLiveActivities(liveOrders))
+                .build();
     }
 
     @Override
@@ -494,6 +537,302 @@ public class SpotReservationServiceImpl implements SpotReservationService {
                 .recommendedSlots(recommendedSlots)
                 .replyText(buildRecommendSlotsReply(spot.getSpotName(), recommendedSlots, requiredCount))
                 .build();
+    }
+
+    private List<ReservationDashboardVO.ScenicAreaOptionVO> buildScenicAreaOptions() {
+        return scenicAreaMapper.listAllActive().stream()
+                .map(area -> ReservationDashboardVO.ScenicAreaOptionVO.builder()
+                        .id(area.getId())
+                        .name(area.getScenicName())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private ReservationDashboardVO.SummaryVO buildDashboardSummary(ReservationDashboardVO.TrendVO todaySummary,
+                                                                   ReservationDashboardVO.TrendVO yesterdaySummary,
+                                                                   List<ReservationDashboardVO.CapacitySpotVO> capacitySpots,
+                                                                   List<ReservationDashboardVO.StatusDistributionVO> statusDistribution) {
+        int orderCount = getOrderCount(todaySummary);
+        int visitorCount = getVisitorCount(todaySummary);
+        int totalCapacity = capacitySpots.stream().mapToInt(item -> defaultNumber(item.getTotalCapacity(), 0)).sum();
+        int reservedCount = capacitySpots.stream().mapToInt(item -> defaultNumber(item.getReservedCount(), 0)).sum();
+        long tightSpotCount = capacitySpots.stream().filter(item -> defaultDouble(item.getUsageRate()) >= 80D).count();
+        double cancelRate = statusDistribution.stream()
+                .filter(item -> STATUS_CANCELLED.equals(item.getStatus()))
+                .findFirst()
+                .map(item -> defaultDouble(item.getRate()))
+                .orElse(0D);
+
+        return ReservationDashboardVO.SummaryVO.builder()
+                .orderCount(orderCount)
+                .orderCompareText(buildCompareText(orderCount, getOrderCount(yesterdaySummary)))
+                .visitorCount(visitorCount)
+                .visitorHint(visitorCount > 0 ? "今日预约游客持续入园" : "今日暂无预约游客")
+                .capacityUsageRate(calculateRate(reservedCount, totalCapacity))
+                .capacityHint(tightSpotCount > 0 ? tightSpotCount + " 个景点偏紧" : "整体容量充足")
+                .cancelRate(cancelRate)
+                .cancelHint(cancelRate >= 10D ? "取消率偏高，请关注异常订单" : "取消率处于平稳区间")
+                .build();
+    }
+
+    private List<ReservationDashboardVO.SourceDistributionVO> buildSourceDistribution(List<ReservationDashboardVO.SourceDistributionVO> rows,
+                                                                                     int totalOrderCount) {
+        Map<String, Integer> countMap = new HashMap<>();
+        for (ReservationDashboardVO.SourceDistributionVO row : rows) {
+            countMap.put(row.getSourceType(), defaultNumber(row.getOrderCount(), 0));
+        }
+        List<ReservationDashboardVO.SourceDistributionVO> result = new ArrayList<>();
+        for (String sourceType : List.of("FRONTEND", "AGENT", "ADMIN")) {
+            int orderCount = countMap.getOrDefault(sourceType, 0);
+            result.add(ReservationDashboardVO.SourceDistributionVO.builder()
+                    .sourceType(sourceType)
+                    .sourceName(resolveSourceName(sourceType))
+                    .orderCount(orderCount)
+                    .rate(calculateRate(orderCount, totalOrderCount))
+                    .build());
+        }
+        return result;
+    }
+
+    private List<ReservationDashboardVO.StatusDistributionVO> buildStatusDistribution(List<ReservationDashboardVO.StatusDistributionVO> rows,
+                                                                                     int totalOrderCount) {
+        Map<String, Integer> countMap = new HashMap<>();
+        for (ReservationDashboardVO.StatusDistributionVO row : rows) {
+            countMap.put(row.getStatus(), defaultNumber(row.getOrderCount(), 0));
+        }
+        List<ReservationDashboardVO.StatusDistributionVO> result = new ArrayList<>();
+        for (String status : List.of(STATUS_CONFIRMED, STATUS_PENDING, STATUS_COMPLETED, STATUS_CANCELLED, STATUS_EXPIRED)) {
+            int orderCount = countMap.getOrDefault(status, 0);
+            result.add(ReservationDashboardVO.StatusDistributionVO.builder()
+                    .status(status)
+                    .statusName(resolveStatusName(status))
+                    .color(resolveStatusColor(status))
+                    .orderCount(orderCount)
+                    .rate(calculateRate(orderCount, totalOrderCount))
+                    .build());
+        }
+        return result;
+    }
+
+    private List<ReservationDashboardVO.HeatSpotVO> buildHeatSpots(List<ReservationDashboardVO.CapacitySpotVO> capacitySpots) {
+        List<ReservationDashboardVO.HeatSpotVO> result = new ArrayList<>();
+        for (int i = 0; i < capacitySpots.size(); i++) {
+            ReservationDashboardVO.CapacitySpotVO item = capacitySpots.get(i);
+            // 前端热力图当前使用百分比坐标，后续接入地图边界后可替换为真实经纬度换算。
+            double x = 18D + (i % 4) * 21D;
+            double y = 22D + (i / 4) * 20D;
+            result.add(ReservationDashboardVO.HeatSpotVO.builder()
+                    .spotId(item.getSpotId())
+                    .spotName(item.getSpotName())
+                    .x(Math.min(x, 88D))
+                    .y(Math.min(y, 86D))
+                    .level(resolveCapacityLevel(item.getUsageRate()))
+                    .totalCapacity(defaultNumber(item.getTotalCapacity(), 0))
+                    .reservedCount(defaultNumber(item.getReservedCount(), 0))
+                    .remainingCount(defaultNumber(item.getRemainingCount(), 0))
+                    .usageRate(defaultDouble(item.getUsageRate()))
+                    .build());
+        }
+        return result;
+    }
+
+    private List<ReservationDashboardVO.TrendVO> buildDashboardTrend(Long scenicAreaId, LocalDate statisticDate) {
+        LocalDate startDate = statisticDate.minusDays(6);
+        LocalDateTime startTime = startDate.atStartOfDay();
+        LocalDateTime endTime = statisticDate.plusDays(1).atStartOfDay();
+        Map<LocalDate, ReservationDashboardVO.TrendVO> rowMap = new HashMap<>();
+        for (ReservationDashboardVO.TrendVO row : orderMapper.listDashboardTrend(scenicAreaId, startTime, endTime)) {
+            rowMap.put(row.getDate(), row);
+        }
+        List<ReservationDashboardVO.TrendVO> result = new ArrayList<>();
+        for (int i = 0; i < 7; i++) {
+            LocalDate date = startDate.plusDays(i);
+            ReservationDashboardVO.TrendVO row = rowMap.get(date);
+            result.add(ReservationDashboardVO.TrendVO.builder()
+                    .date(date)
+                    .label(date.format(DASHBOARD_TREND_LABEL))
+                    .orderCount(row == null ? 0 : getOrderCount(row))
+                    .visitorCount(row == null ? 0 : getVisitorCount(row))
+                    .build());
+        }
+        return result;
+    }
+
+    private List<ReservationDashboardVO.PeakTimeVO> buildPeakTimes(List<ReservationDashboardVO.PeakTimeVO> rows) {
+        return rows.stream().map(row -> ReservationDashboardVO.PeakTimeVO.builder()
+                        .startTime(row.getStartTime())
+                        .endTime(row.getEndTime())
+                        .timeRange(row.getTimeRange())
+                        .visitorCount(defaultNumber(row.getVisitorCount(), 0))
+                        .note(defaultNumber(row.getVisitorCount(), 0) > 0 ? "该时段预约游客较集中" : "该时段暂无预约")
+                        .level(resolveVisitorLevel(defaultNumber(row.getVisitorCount(), 0)))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private List<ReservationDashboardVO.HotSpotRankVO> buildHotSpotRanks(List<ReservationDashboardVO.CapacitySpotVO> capacitySpots) {
+        return capacitySpots.stream().limit(5).map(item -> ReservationDashboardVO.HotSpotRankVO.builder()
+                        .spotId(item.getSpotId())
+                        .spotName(item.getSpotName())
+                        .orderCount(defaultNumber(item.getReservedCount(), 0))
+                        .usageRate(defaultDouble(item.getUsageRate()))
+                        .remainingCount(defaultNumber(item.getRemainingCount(), 0))
+                        .level(resolveCapacityLevel(item.getUsageRate()))
+                        .note(String.format(Locale.CHINA, "容量利用率 %.1f%%，剩余 %d", defaultDouble(item.getUsageRate()), defaultNumber(item.getRemainingCount(), 0)))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private List<ReservationDashboardVO.WarningVO> buildDashboardWarnings(List<ReservationDashboardVO.CapacitySpotVO> capacitySpots,
+                                                                         List<ReservationDashboardVO.StatusDistributionVO> statusDistribution) {
+        List<ReservationDashboardVO.WarningVO> warnings = new ArrayList<>();
+        capacitySpots.stream()
+                .filter(item -> defaultDouble(item.getUsageRate()) >= 80D)
+                .limit(4)
+                .forEach(item -> warnings.add(ReservationDashboardVO.WarningVO.builder()
+                        .title(item.getSpotName())
+                        .level(resolveCapacityLevel(item.getUsageRate()))
+                        .tag(defaultDouble(item.getUsageRate()) >= 90D ? "快满" : "偏紧")
+                        .description(String.format(Locale.CHINA, "容量利用率 %.1f%%，剩余 %d 个名额，建议调整推荐策略。", defaultDouble(item.getUsageRate()), defaultNumber(item.getRemainingCount(), 0)))
+                        .build()));
+        double cancelRate = statusDistribution.stream()
+                .filter(item -> STATUS_CANCELLED.equals(item.getStatus()))
+                .findFirst()
+                .map(item -> defaultDouble(item.getRate()))
+                .orElse(0D);
+        if (cancelRate >= 10D) {
+            warnings.add(ReservationDashboardVO.WarningVO.builder()
+                    .title("预约取消率偏高")
+                    .level(cancelRate >= 20D ? "danger" : "warning")
+                    .tag("取消")
+                    .description(String.format(Locale.CHINA, "今日取消率 %.1f%%，建议排查集中取消来源。", cancelRate))
+                    .build());
+        }
+        return warnings;
+    }
+
+    private List<ReservationDashboardVO.LiveActivityVO> buildLiveActivities(List<SpotReservationOrderVO> orders) {
+        return orders.stream().map(order -> {
+            boolean cancelled = STATUS_CANCELLED.equals(order.getStatus()) && order.getCancelTime() != null;
+            String action = cancelled ? "取消" : "预约";
+            return ReservationDashboardVO.LiveActivityVO.builder()
+                    .title(maskName(order.getContactName()) + " " + action + defaultString(order.getSpotName(), "景点"))
+                    .timeText(buildActivityTimeText(cancelled ? order.getCancelTime() : order.getCreateTime()))
+                    .description(String.format(Locale.CHINA, "%d 人，来源：%s，%s",
+                            defaultNumber(order.getVisitorCount(), 0),
+                            resolveSourceName(order.getSourceType()),
+                            formatSlotTime(order.getStartTime(), order.getEndTime())))
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    private String buildCompareText(int todayCount, int yesterdayCount) {
+        if (yesterdayCount == 0) {
+            return todayCount == 0 ? "较昨日 持平" : "较昨日 +100.0%";
+        }
+        double rate = (todayCount - yesterdayCount) * 100D / yesterdayCount;
+        return String.format(Locale.CHINA, "较昨日 %+.1f%%", rate);
+    }
+
+    private String buildActivityTimeText(LocalDateTime activityTime) {
+        if (activityTime == null) {
+            return "";
+        }
+        LocalDateTime now = LocalDateTime.now();
+        long minutes = Duration.between(activityTime, now).toMinutes();
+        if (minutes >= 0 && minutes < 1) {
+            return "刚刚";
+        }
+        if (minutes >= 1 && minutes < 60) {
+            return minutes + " 分钟前";
+        }
+        if (activityTime.toLocalDate().equals(now.toLocalDate())) {
+            return activityTime.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"));
+        }
+        return activityTime.format(DASHBOARD_ACTIVITY_TIME);
+    }
+
+    private String resolveCapacityLevel(Double usageRate) {
+        double rate = defaultDouble(usageRate);
+        if (rate >= 90D) {
+            return "danger";
+        }
+        if (rate >= 80D) {
+            return "warning";
+        }
+        return "normal";
+    }
+
+    private String resolveVisitorLevel(Integer visitorCount) {
+        int count = defaultNumber(visitorCount, 0);
+        if (count >= 300) {
+            return "danger";
+        }
+        if (count >= 100) {
+            return "warning";
+        }
+        return "normal";
+    }
+
+    private String resolveSourceName(String sourceType) {
+        if (SOURCE_AGENT.equals(sourceType)) {
+            return "Agent";
+        }
+        if ("ADMIN".equals(sourceType)) {
+            return "后台";
+        }
+        return "前台";
+    }
+
+    private String resolveStatusName(String status) {
+        Map<String, String> statusNames = new LinkedHashMap<>();
+        statusNames.put(STATUS_CONFIRMED, "已预约");
+        statusNames.put(STATUS_PENDING, "待确认");
+        statusNames.put(STATUS_COMPLETED, "已完成");
+        statusNames.put(STATUS_CANCELLED, "已取消");
+        statusNames.put(STATUS_EXPIRED, "已过期");
+        return statusNames.getOrDefault(status, status);
+    }
+
+    private String resolveStatusColor(String status) {
+        Map<String, String> statusColors = new LinkedHashMap<>();
+        statusColors.put(STATUS_CONFIRMED, "#21c9aa");
+        statusColors.put(STATUS_PENDING, "#f8b84e");
+        statusColors.put(STATUS_COMPLETED, "#50d5ff");
+        statusColors.put(STATUS_CANCELLED, "#ff6678");
+        statusColors.put(STATUS_EXPIRED, "#8b95a7");
+        return statusColors.getOrDefault(status, "#8b95a7");
+    }
+
+    private String maskName(String name) {
+        if (!StringUtils.hasText(name)) {
+            return "游客";
+        }
+        String trimmed = name.trim();
+        return trimmed.substring(0, 1) + "**";
+    }
+
+    private int getOrderCount(ReservationDashboardVO.TrendVO summary) {
+        return summary == null ? 0 : defaultNumber(summary.getOrderCount(), 0);
+    }
+
+    private int getVisitorCount(ReservationDashboardVO.TrendVO summary) {
+        return summary == null ? 0 : defaultNumber(summary.getVisitorCount(), 0);
+    }
+
+    private double calculateRate(int numerator, int denominator) {
+        if (denominator <= 0) {
+            return 0D;
+        }
+        return Math.round(numerator * 1000D / denominator) / 10D;
+    }
+
+    private double defaultDouble(Double value) {
+        return value == null ? 0D : value;
+    }
+
+    private String defaultString(String value, String defaultValue) {
+        return StringUtils.hasText(value) ? value : defaultValue;
     }
 
     private void validateRuleCreate(SpotReservationRuleCreateDTO dto) {

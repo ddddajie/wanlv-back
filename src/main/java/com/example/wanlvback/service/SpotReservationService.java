@@ -14,6 +14,7 @@ import com.example.wanlvback.pojo.vo.AgentReservationCancelResultVO;
 import com.example.wanlvback.pojo.vo.AgentReservationSlotMatchVO;
 import com.example.wanlvback.pojo.vo.AgentReservationSlotRecommendVO;
 import com.example.wanlvback.pojo.vo.AgentReservationSpotVO;
+import com.example.wanlvback.pojo.vo.ReservationDashboardVO;
 import com.example.wanlvback.pojo.vo.ReservationEnabledSpotVO;
 import com.example.wanlvback.pojo.vo.SpotReservationGenerateVO;
 import com.example.wanlvback.pojo.vo.SpotReservationOrderVO;
@@ -47,6 +48,8 @@ public interface SpotReservationService {
 
     PageResult pageOrders(Integer pageNum, Integer pageSize, Long scenicAreaId, Long spotId, Long userId,
                           LocalDate visitDate, String status, String sourceType, String reservationNo);
+
+    ReservationDashboardVO getAdminDashboard(Long scenicAreaId, LocalDate date);
 
     List<ReservationEnabledSpotVO> listReservationEnabledSpots(Long scenicAreaId, String keyword);
 

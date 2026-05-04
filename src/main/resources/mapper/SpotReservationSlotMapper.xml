@@ -65,6 +65,39 @@
         order by start_time asc, id asc
     </select>
 
+    <select id="listDashboardCapacitySpots" resultType="com.example.wanlvback.pojo.vo.ReservationDashboardVO$CapacitySpotVO">
+        select
+            s.spot_id as spotId,
+            max(sp.spot_name) as spotName,
+            coalesce(sum(s.total_capacity), 0) as totalCapacity,
+            coalesce(sum(s.reserved_count), 0) as reservedCount,
+            greatest(coalesce(sum(s.total_capacity), 0) - coalesce(sum(s.reserved_count), 0), 0) as remainingCount,
+            case
+                when coalesce(sum(s.total_capacity), 0) = 0 then 0
+                else round(coalesce(sum(s.reserved_count), 0) * 100.0 / sum(s.total_capacity), 1)
+            end as usageRate
+        from spot_reservation_slot s
+        left join scenic_spot sp on sp.id = s.spot_id and sp.deleted = 0
+        where s.visit_date = #{visitDate}
+        <if test="scenicAreaId != null">and s.scenic_area_id = #{scenicAreaId}</if>
+        group by s.spot_id
+        order by usageRate desc, reservedCount desc, s.spot_id asc
+    </select>
+
+    <select id="listDashboardPeakTimes" resultType="com.example.wanlvback.pojo.vo.ReservationDashboardVO$PeakTimeVO">
+        select
+            s.start_time as startTime,
+            s.end_time as endTime,
+            concat(date_format(s.start_time, '%H:%i'), '-', date_format(s.end_time, '%H:%i')) as timeRange,
+            coalesce(sum(s.reserved_count), 0) as visitorCount
+        from spot_reservation_slot s
+        where s.visit_date = #{visitDate}
+        <if test="scenicAreaId != null">and s.scenic_area_id = #{scenicAreaId}</if>
+        group by s.start_time, s.end_time
+        order by visitorCount desc, s.start_time asc
+        limit #{limit}
+    </select>
+
     <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.SpotReservationSlot" useGeneratedKeys="true" keyProperty="id">
         insert into spot_reservation_slot (
             scenic_area_id, spot_id, rule_id, visit_date, start_time, end_time,

@@ -1,6 +1,7 @@
 package com.example.wanlvback.mapper;
 
 import com.example.wanlvback.pojo.entity.SpotReservationSlot;
+import com.example.wanlvback.pojo.vo.ReservationDashboardVO;
 import com.github.pagehelper.Page;
 import org.apache.ibatis.annotations.Param;
 
@@ -26,6 +27,13 @@ public interface SpotReservationSlotMapper {
 
     List<SpotReservationSlot> listBySpotAndDate(@Param("spotId") Long spotId,
                                                 @Param("visitDate") LocalDate visitDate);
+
+    List<ReservationDashboardVO.CapacitySpotVO> listDashboardCapacitySpots(@Param("scenicAreaId") Long scenicAreaId,
+                                                                           @Param("visitDate") LocalDate visitDate);
+
+    List<ReservationDashboardVO.PeakTimeVO> listDashboardPeakTimes(@Param("scenicAreaId") Long scenicAreaId,
+                                                                   @Param("visitDate") LocalDate visitDate,
+                                                                   @Param("limit") Integer limit);
 
     int insert(SpotReservationSlot slot);
 

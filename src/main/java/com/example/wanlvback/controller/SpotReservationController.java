@@ -14,6 +14,7 @@ import com.example.wanlvback.pojo.vo.AgentReservationOrderResultVO;
 import com.example.wanlvback.pojo.vo.AgentReservationSlotMatchVO;
 import com.example.wanlvback.pojo.vo.AgentReservationSlotRecommendVO;
 import com.example.wanlvback.pojo.vo.AgentReservationSpotVO;
+import com.example.wanlvback.pojo.vo.ReservationDashboardVO;
 import com.example.wanlvback.pojo.vo.ReservationEnabledSpotVO;
 import com.example.wanlvback.pojo.vo.SpotReservationGenerateVO;
 import com.example.wanlvback.pojo.vo.SpotReservationOrderVO;
@@ -154,6 +155,16 @@ public class SpotReservationController {
                 pageNum, pageSize, scenicAreaId, spotId, userId, visitDate, status, sourceType, reservationNo);
         return Result.success(spotReservationService.pageOrders(pageNum, pageSize, scenicAreaId, spotId, userId,
                 visitDate, status, sourceType, reservationNo));
+    }
+
+    /**
+     * 查询预约运营看板聚合数据。
+     */
+    @GetMapping("/admin/dashboard")
+    public Result<ReservationDashboardVO> getAdminDashboard(@RequestParam(required = false) Long scenicAreaId,
+                                                           @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
+        log.info("收到预约运营看板查询请求，scenicAreaId={}, date={}", scenicAreaId, date);
+        return Result.success(spotReservationService.getAdminDashboard(scenicAreaId, date));
     }
 
     /**
