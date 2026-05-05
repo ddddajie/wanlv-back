@@ -75,8 +75,7 @@
             count(1) as orderCount,
             coalesce(sum(visitor_count), 0) as visitorCount
         from spot_reservation_order
-        where create_time &gt;= #{startTime}
-          and create_time &lt; #{endTime}
+        where visit_date = #{visitDate}
         <if test="scenicAreaId != null">and scenic_area_id = #{scenicAreaId}</if>
     </select>
 
@@ -85,8 +84,7 @@
             source_type as sourceType,
             count(1) as orderCount
         from spot_reservation_order
-        where create_time &gt;= #{startTime}
-          and create_time &lt; #{endTime}
+        where visit_date = #{visitDate}
         <if test="scenicAreaId != null">and scenic_area_id = #{scenicAreaId}</if>
         group by source_type
         order by orderCount desc, source_type asc
@@ -97,8 +95,7 @@
             status,
             count(1) as orderCount
         from spot_reservation_order
-        where create_time &gt;= #{startTime}
-          and create_time &lt; #{endTime}
+        where visit_date = #{visitDate}
         <if test="scenicAreaId != null">and scenic_area_id = #{scenicAreaId}</if>
         group by status
         order by orderCount desc, status asc
@@ -106,25 +103,22 @@
 
     <select id="listDashboardTrend" resultType="com.example.wanlvback.pojo.vo.ReservationDashboardVO$TrendVO">
         select
-            date(create_time) as date,
-            date_format(create_time, '%m-%d') as label,
+            visit_date as date,
+            date_format(visit_date, '%m-%d') as label,
             count(1) as orderCount,
             coalesce(sum(visitor_count), 0) as visitorCount
         from spot_reservation_order
-        where create_time &gt;= #{startTime}
-          and create_time &lt; #{endTime}
+        where visit_date &gt;= #{startDate}
+          and visit_date &lt;= #{endDate}
         <if test="scenicAreaId != null">and scenic_area_id = #{scenicAreaId}</if>
-        group by date(create_time), date_format(create_time, '%m-%d')
-        order by date(create_time) asc
+        group by visit_date, date_format(visit_date, '%m-%d')
+        order by visit_date asc
     </select>
 
     <select id="listDashboardLiveOrders" resultMap="SpotReservationOrderResultMap">
         select <include refid="Base_Column_List"/>
         from spot_reservation_order
-        where (
-            (create_time &gt;= #{startTime} and create_time &lt; #{endTime})
-            or (cancel_time &gt;= #{startTime} and cancel_time &lt; #{endTime})
-        )
+        where 1 = 1
         <if test="scenicAreaId != null">and scenic_area_id = #{scenicAreaId}</if>
         order by coalesce(cancel_time, create_time) desc, id desc
         limit #{limit}

@@ -6,7 +6,6 @@ import com.github.pagehelper.Page;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 public interface SpotReservationOrderMapper {
@@ -26,24 +25,19 @@ public interface SpotReservationOrderMapper {
                                          @Param("reservationNo") String reservationNo);
 
     ReservationDashboardVO.TrendVO getDashboardOrderSummary(@Param("scenicAreaId") Long scenicAreaId,
-                                                            @Param("startTime") LocalDateTime startTime,
-                                                            @Param("endTime") LocalDateTime endTime);
+                                                            @Param("visitDate") LocalDate visitDate);
 
     List<ReservationDashboardVO.SourceDistributionVO> listDashboardSourceDistribution(@Param("scenicAreaId") Long scenicAreaId,
-                                                                                     @Param("startTime") LocalDateTime startTime,
-                                                                                     @Param("endTime") LocalDateTime endTime);
+                                                                                     @Param("visitDate") LocalDate visitDate);
 
     List<ReservationDashboardVO.StatusDistributionVO> listDashboardStatusDistribution(@Param("scenicAreaId") Long scenicAreaId,
-                                                                                     @Param("startTime") LocalDateTime startTime,
-                                                                                     @Param("endTime") LocalDateTime endTime);
+                                                                                     @Param("visitDate") LocalDate visitDate);
 
     List<ReservationDashboardVO.TrendVO> listDashboardTrend(@Param("scenicAreaId") Long scenicAreaId,
-                                                           @Param("startTime") LocalDateTime startTime,
-                                                           @Param("endTime") LocalDateTime endTime);
+                                                           @Param("startDate") LocalDate startDate,
+                                                           @Param("endDate") LocalDate endDate);
 
     List<SpotReservationOrder> listDashboardLiveOrders(@Param("scenicAreaId") Long scenicAreaId,
-                                                       @Param("startTime") LocalDateTime startTime,
-                                                       @Param("endTime") LocalDateTime endTime,
                                                        @Param("limit") Integer limit);
 
     int insert(SpotReservationOrder order);

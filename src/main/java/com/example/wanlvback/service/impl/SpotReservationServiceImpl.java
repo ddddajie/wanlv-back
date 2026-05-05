@@ -252,20 +252,17 @@ public class SpotReservationServiceImpl implements SpotReservationService {
     @Override
     public ReservationDashboardVO getAdminDashboard(Long scenicAreaId, LocalDate date) {
         LocalDate statisticDate = date == null ? LocalDate.now() : date;
-        LocalDateTime startTime = statisticDate.atStartOfDay();
-        LocalDateTime endTime = statisticDate.plusDays(1).atStartOfDay();
 
-        ReservationDashboardVO.TrendVO todaySummary = orderMapper.getDashboardOrderSummary(scenicAreaId, startTime, endTime);
-        ReservationDashboardVO.TrendVO yesterdaySummary = orderMapper.getDashboardOrderSummary(scenicAreaId,
-                statisticDate.minusDays(1).atStartOfDay(), statisticDate.atStartOfDay());
+        ReservationDashboardVO.TrendVO todaySummary = orderMapper.getDashboardOrderSummary(scenicAreaId, statisticDate);
+        ReservationDashboardVO.TrendVO yesterdaySummary = orderMapper.getDashboardOrderSummary(scenicAreaId, statisticDate.minusDays(1));
         List<ReservationDashboardVO.CapacitySpotVO> capacitySpots = slotMapper.listDashboardCapacitySpots(scenicAreaId, statisticDate);
         List<ReservationDashboardVO.SourceDistributionVO> sourceDistribution = buildSourceDistribution(
-                orderMapper.listDashboardSourceDistribution(scenicAreaId, startTime, endTime), getOrderCount(todaySummary));
+                orderMapper.listDashboardSourceDistribution(scenicAreaId, statisticDate), getOrderCount(todaySummary));
         List<ReservationDashboardVO.StatusDistributionVO> statusDistribution = buildStatusDistribution(
-                orderMapper.listDashboardStatusDistribution(scenicAreaId, startTime, endTime), getOrderCount(todaySummary));
+                orderMapper.listDashboardStatusDistribution(scenicAreaId, statisticDate), getOrderCount(todaySummary));
         List<ReservationDashboardVO.PeakTimeVO> peakTimes = buildPeakTimes(
                 slotMapper.listDashboardPeakTimes(scenicAreaId, statisticDate, 4));
-        List<SpotReservationOrderVO> liveOrders = orderMapper.listDashboardLiveOrders(scenicAreaId, startTime, endTime, 10)
+        List<SpotReservationOrderVO> liveOrders = orderMapper.listDashboardLiveOrders(scenicAreaId, 10)
                 .stream().map(this::buildOrderVO).collect(Collectors.toList());
 
         return ReservationDashboardVO.builder()
@@ -567,11 +564,11 @@ public class SpotReservationServiceImpl implements SpotReservationService {
                 .orderCount(orderCount)
                 .orderCompareText(buildCompareText(orderCount, getOrderCount(yesterdaySummary)))
                 .visitorCount(visitorCount)
-                .visitorHint(visitorCount > 0 ? "今日预约游客持续入园" : "今日暂无预约游客")
+                .visitorHint(visitorCount > 0 ? "到访预约游客持续入园" : "所选日期暂无到访预约")
                 .capacityUsageRate(calculateRate(reservedCount, totalCapacity))
                 .capacityHint(tightSpotCount > 0 ? tightSpotCount + " 个景点偏紧" : "整体容量充足")
                 .cancelRate(cancelRate)
-                .cancelHint(cancelRate >= 10D ? "取消率偏高，请关注异常订单" : "取消率处于平稳区间")
+                .cancelHint(cancelRate >= 10D ? "高于近 7 日到访均值" : "低于近 7 日到访均值")
                 .build();
     }
 
@@ -638,10 +635,8 @@ public class SpotReservationServiceImpl implements SpotReservationService {
 
     private List<ReservationDashboardVO.TrendVO> buildDashboardTrend(Long scenicAreaId, LocalDate statisticDate) {
         LocalDate startDate = statisticDate.minusDays(6);
-        LocalDateTime startTime = startDate.atStartOfDay();
-        LocalDateTime endTime = statisticDate.plusDays(1).atStartOfDay();
         Map<LocalDate, ReservationDashboardVO.TrendVO> rowMap = new HashMap<>();
-        for (ReservationDashboardVO.TrendVO row : orderMapper.listDashboardTrend(scenicAreaId, startTime, endTime)) {
+        for (ReservationDashboardVO.TrendVO row : orderMapper.listDashboardTrend(scenicAreaId, startDate, statisticDate)) {
             rowMap.put(row.getDate(), row);
         }
         List<ReservationDashboardVO.TrendVO> result = new ArrayList<>();
@@ -728,10 +723,10 @@ public class SpotReservationServiceImpl implements SpotReservationService {
 
     private String buildCompareText(int todayCount, int yesterdayCount) {
         if (yesterdayCount == 0) {
-            return todayCount == 0 ? "较昨日 持平" : "较昨日 +100.0%";
+            return todayCount == 0 ? "较昨日到访 持平" : "较昨日到访 +100.0%";
         }
         double rate = (todayCount - yesterdayCount) * 100D / yesterdayCount;
-        return String.format(Locale.CHINA, "较昨日 %+.1f%%", rate);
+        return String.format(Locale.CHINA, "较昨日到访 %+.1f%%", rate);
     }
 
     private String buildActivityTimeText(LocalDateTime activityTime) {
