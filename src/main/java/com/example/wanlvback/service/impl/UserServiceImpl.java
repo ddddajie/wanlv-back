@@ -9,6 +9,7 @@ import com.example.wanlvback.pojo.dto.AdminUserUpdateDTO;
 import com.example.wanlvback.pojo.dto.NormalUserLoginDTO;
 import com.example.wanlvback.pojo.dto.NormalUserRegisterDTO;
 import com.example.wanlvback.pojo.dto.NormalUserUpdateDTO;
+import com.example.wanlvback.pojo.dto.RealNameVerifyDTO;
 import com.example.wanlvback.pojo.entity.SysAdminUser;
 import com.example.wanlvback.pojo.entity.SysNormalUser;
 import com.example.wanlvback.pojo.vo.AdminUserVO;
@@ -16,6 +17,7 @@ import com.example.wanlvback.pojo.vo.NormalUserVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
 import com.example.wanlvback.result.PageResult;
 import com.example.wanlvback.service.UserService;
+import com.example.wanlvback.utils.IdentityUtil;
 import com.example.wanlvback.utils.PasswordUtil;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
@@ -172,6 +174,7 @@ public class UserServiceImpl implements UserService {
         normalUser.setAge(registerDTO.getAge());
         normalUser.setInterestTags(registerDTO.getInterestTags());
         normalUser.setStatus(1);
+        normalUser.setRealNameStatus(0);
         normalUser.setDeleted(0);
         normalUser.setLastLoginTime(now);
         normalUser.setCreateTime(now);
@@ -204,6 +207,44 @@ public class UserServiceImpl implements UserService {
         normalUser.setLastLoginTime(now);
         log.info("普通用户登录成功，username={}", normalUser.getUsername());
         return buildNormalLoginVO(normalUser);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public NormalUserVO verifyNormalUserRealName(RealNameVerifyDTO verifyDTO) {
+        if (verifyDTO == null || verifyDTO.getUserId() == null) {
+            throw new BaseException("实名认证参数不能为空");
+        }
+        if (!StringUtils.hasText(verifyDTO.getRealName()) || !StringUtils.hasText(verifyDTO.getIdCardNo())) {
+            throw new BaseException("真实姓名和身份证号不能为空");
+        }
+        SysNormalUser normalUser = requireNormalUser(verifyDTO.getUserId());
+        if (isDisabled(normalUser.getStatus())) {
+            throw new BaseException("普通用户账号已被禁用");
+        }
+
+        // 重点：当前先做本地模拟实名，后续可在这里替换阿里云/腾讯云二要素核验。
+        String idCardNo = IdentityUtil.normalizeIdCardNo(verifyDTO.getIdCardNo());
+        if (!IdentityUtil.isValidIdCardNo(idCardNo)) {
+            sysNormalUserMapper.updateRealNameInfo(normalUser.getId(), 2, verifyDTO.getRealName().trim(), null, null, null);
+            throw new BaseException("身份证号格式不正确");
+        }
+        String idCardHash = IdentityUtil.hashIdCardNo(idCardNo);
+        SysNormalUser existRealNameUser = sysNormalUserMapper.getByIdCardHash(idCardHash);
+        if (existRealNameUser != null && !existRealNameUser.getId().equals(normalUser.getId())) {
+            throw new BaseException("该身份证号已绑定其他账号");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        sysNormalUserMapper.updateRealNameInfo(
+                normalUser.getId(),
+                1,
+                verifyDTO.getRealName().trim(),
+                IdentityUtil.maskIdCardNo(idCardNo),
+                idCardHash,
+                now);
+        log.info("普通用户实名认证成功，userId={}", normalUser.getId());
+        return buildNormalUserVO(requireNormalUser(normalUser.getId()));
     }
 
     @Override
@@ -469,6 +510,7 @@ public class UserServiceImpl implements UserService {
                 .userType("admin")
                 .role(adminUser.getRole())
                 .status(adminUser.getStatus())
+                .realNameStatus(null)
                 .lastLoginTime(adminUser.getLastLoginTime())
                 .build();
     }
@@ -481,6 +523,7 @@ public class UserServiceImpl implements UserService {
                 .userType("normal")
                 .role("normal_user")
                 .status(normalUser.getStatus())
+                .realNameStatus(normalUser.getRealNameStatus())
                 .lastLoginTime(normalUser.getLastLoginTime())
                 .build();
     }
@@ -515,6 +558,10 @@ public class UserServiceImpl implements UserService {
                 .age(normalUser.getAge())
                 .interestTags(normalUser.getInterestTags())
                 .status(normalUser.getStatus())
+                .realNameStatus(normalUser.getRealNameStatus())
+                .realName(normalUser.getRealName())
+                .idCardMasked(normalUser.getIdCardMasked())
+                .realNameTime(normalUser.getRealNameTime())
                 .lastLoginTime(normalUser.getLastLoginTime())
                 .createTime(normalUser.getCreateTime())
                 .updateTime(normalUser.getUpdateTime())

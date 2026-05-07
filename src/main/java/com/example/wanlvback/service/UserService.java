@@ -6,6 +6,7 @@ import com.example.wanlvback.pojo.dto.AdminUserUpdateDTO;
 import com.example.wanlvback.pojo.dto.NormalUserLoginDTO;
 import com.example.wanlvback.pojo.dto.NormalUserRegisterDTO;
 import com.example.wanlvback.pojo.dto.NormalUserUpdateDTO;
+import com.example.wanlvback.pojo.dto.RealNameVerifyDTO;
 import com.example.wanlvback.pojo.vo.AdminUserVO;
 import com.example.wanlvback.pojo.vo.NormalUserVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
@@ -54,6 +55,8 @@ public interface UserService {
      * @return 登录结果
      */
     UserLoginVO normalLogin(NormalUserLoginDTO loginDTO);
+
+    NormalUserVO verifyNormalUserRealName(RealNameVerifyDTO verifyDTO);
 
     /**
      * 更新管理员信息。

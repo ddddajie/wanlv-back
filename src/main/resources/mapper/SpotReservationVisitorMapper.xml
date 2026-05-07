@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.SpotReservationVisitorMapper">
+
+    <resultMap id="SpotReservationVisitorResultMap" type="com.example.wanlvback.pojo.entity.SpotReservationVisitor">
+        <id column="id" property="id"/>
+        <result column="order_id" property="orderId"/>
+        <result column="reservation_no" property="reservationNo"/>
+        <result column="user_id" property="userId"/>
+        <result column="scenic_area_id" property="scenicAreaId"/>
+        <result column="spot_id" property="spotId"/>
+        <result column="slot_id" property="slotId"/>
+        <result column="visit_date" property="visitDate"/>
+        <result column="real_name" property="realName"/>
+        <result column="id_card_masked" property="idCardMasked"/>
+        <result column="id_card_hash" property="idCardHash"/>
+        <result column="booker" property="booker"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, order_id, reservation_no, user_id, scenic_area_id, spot_id, slot_id,
+        visit_date, real_name, id_card_masked, id_card_hash, booker, status,
+        create_time, update_time
+    </sql>
+
+    <select id="listByReservationNo" resultMap="SpotReservationVisitorResultMap">
+        select <include refid="Base_Column_List"/>
+        from spot_reservation_visitor
+        where reservation_no = #{reservationNo}
+        order by booker desc, id asc
+    </select>
+
+    <select id="countActiveByIdentity" resultType="int">
+        select count(1)
+        from spot_reservation_visitor
+        where id_card_hash = #{idCardHash}
+          and spot_id = #{spotId}
+          and visit_date = #{visitDate}
+          and status in ('PENDING', 'CONFIRMED')
+    </select>
+
+    <insert id="batchInsert">
+        insert into spot_reservation_visitor (
+            order_id, reservation_no, user_id, scenic_area_id, spot_id, slot_id,
+            visit_date, real_name, id_card_masked, id_card_hash, booker, status,
+            create_time, update_time
+        ) values
+        <foreach collection="visitors" item="visitor" separator=",">
+            (
+                #{visitor.orderId}, #{visitor.reservationNo}, #{visitor.userId},
+                #{visitor.scenicAreaId}, #{visitor.spotId}, #{visitor.slotId},
+                #{visitor.visitDate}, #{visitor.realName}, #{visitor.idCardMasked},
+                #{visitor.idCardHash}, #{visitor.booker}, #{visitor.status},
+                #{visitor.createTime}, #{visitor.updateTime}
+            )
+        </foreach>
+    </insert>
+
+    <update id="cancelByReservationNo">
+        update spot_reservation_visitor
+        set status = 'CANCELLED',
+            update_time = now()
+        where reservation_no = #{reservationNo}
+          and status in ('PENDING', 'CONFIRMED')
+    </update>
+
+</mapper>

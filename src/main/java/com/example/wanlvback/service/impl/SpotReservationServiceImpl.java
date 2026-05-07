@@ -6,8 +6,10 @@ import com.example.wanlvback.mapper.ScenicSpotMapper;
 import com.example.wanlvback.mapper.SpotReservationOrderMapper;
 import com.example.wanlvback.mapper.SpotReservationRuleMapper;
 import com.example.wanlvback.mapper.SpotReservationSlotMapper;
+import com.example.wanlvback.mapper.SpotReservationVisitorMapper;
 import com.example.wanlvback.mapper.SysNormalUserMapper;
 import com.example.wanlvback.pojo.dto.AgentReservationOrderDTO;
+import com.example.wanlvback.pojo.dto.ReservationVisitorDTO;
 import com.example.wanlvback.pojo.dto.SpotReservationCancelDTO;
 import com.example.wanlvback.pojo.dto.SpotReservationCreateDTO;
 import com.example.wanlvback.pojo.dto.SpotReservationRuleCreateDTO;
@@ -21,6 +23,7 @@ import com.example.wanlvback.pojo.entity.ScenicSpot;
 import com.example.wanlvback.pojo.entity.SpotReservationOrder;
 import com.example.wanlvback.pojo.entity.SpotReservationRule;
 import com.example.wanlvback.pojo.entity.SpotReservationSlot;
+import com.example.wanlvback.pojo.entity.SpotReservationVisitor;
 import com.example.wanlvback.pojo.entity.SysNormalUser;
 import com.example.wanlvback.pojo.vo.AgentReservationCancelResultVO;
 import com.example.wanlvback.pojo.vo.AgentReservationOrderResultVO;
@@ -29,6 +32,7 @@ import com.example.wanlvback.pojo.vo.AgentReservationSlotRecommendVO;
 import com.example.wanlvback.pojo.vo.AgentReservationSpotVO;
 import com.example.wanlvback.pojo.vo.ReservationDashboardVO;
 import com.example.wanlvback.pojo.vo.ReservationEnabledSpotVO;
+import com.example.wanlvback.pojo.vo.ReservationVisitorVO;
 import com.example.wanlvback.pojo.vo.SpotReservationGenerateVO;
 import com.example.wanlvback.pojo.vo.SpotReservationOrderVO;
 import com.example.wanlvback.pojo.vo.SpotReservationRuleVO;
@@ -36,6 +40,7 @@ import com.example.wanlvback.pojo.vo.SpotReservationSlotVO;
 import com.example.wanlvback.pojo.vo.SpotReservationSlotsQueryVO;
 import com.example.wanlvback.result.PageResult;
 import com.example.wanlvback.service.SpotReservationService;
+import com.example.wanlvback.utils.IdentityUtil;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import lombok.extern.slf4j.Slf4j;
@@ -91,6 +96,9 @@ public class SpotReservationServiceImpl implements SpotReservationService {
 
     @Autowired
     private SpotReservationOrderMapper orderMapper;
+
+    @Autowired
+    private SpotReservationVisitorMapper visitorMapper;
 
     @Autowired
     private ScenicSpotMapper scenicSpotMapper;
@@ -315,14 +323,19 @@ public class SpotReservationServiceImpl implements SpotReservationService {
         validateAdvanceDate(spot, slot.getVisitDate());
         validateMinAdvanceTime(spot, slot);
 
-        int affected = slotMapper.increaseReservedCount(slot.getId(), dto.getVisitorCount());
+        List<SpotReservationVisitor> visitors = validateReservationVisitors(dto, user, slot);
+        int actualVisitorCount = visitors.size();
+
+        int affected = slotMapper.increaseReservedCount(slot.getId(), actualVisitorCount);
         if (affected != 1) {
             throw new BaseException("剩余名额不足或当前时段不可预约");
         }
 
         LocalDateTime now = LocalDateTime.now();
-        SpotReservationOrder order = SpotReservationOrder.builder().reservationNo(generateReservationNo()).userId(user.getId()).scenicAreaId(slot.getScenicAreaId()).spotId(slot.getSpotId()).slotId(slot.getId()).visitDate(slot.getVisitDate()).startTime(slot.getStartTime()).endTime(slot.getEndTime()).visitorCount(dto.getVisitorCount()).contactName(dto.getContactName()).contactPhone(dto.getContactPhone()).status(STATUS_CONFIRMED).sourceType(normalizeSourceType(dto.getSourceType())).agentSessionCode(dto.getAgentSessionCode()).clientRequestId(normalizeBlank(dto.getClientRequestId())).remark(dto.getRemark()).createTime(now).updateTime(now).build();
+        SpotReservationOrder order = SpotReservationOrder.builder().reservationNo(generateReservationNo()).userId(user.getId()).scenicAreaId(slot.getScenicAreaId()).spotId(slot.getSpotId()).slotId(slot.getId()).visitDate(slot.getVisitDate()).startTime(slot.getStartTime()).endTime(slot.getEndTime()).visitorCount(actualVisitorCount).contactName(dto.getContactName()).contactPhone(dto.getContactPhone()).status(STATUS_CONFIRMED).sourceType(normalizeSourceType(dto.getSourceType())).agentSessionCode(dto.getAgentSessionCode()).clientRequestId(normalizeBlank(dto.getClientRequestId())).remark(dto.getRemark()).createTime(now).updateTime(now).build();
         orderMapper.insert(order);
+        fillVisitorOrderInfo(visitors, order, now);
+        visitorMapper.batchInsert(visitors);
         return buildOrderVO(orderMapper.getById(order.getId()));
     }
 
@@ -357,6 +370,7 @@ public class SpotReservationServiceImpl implements SpotReservationService {
         if (rollback != 1) {
             throw new BaseException("预约名额回滚失败");
         }
+        visitorMapper.cancelByReservationNo(reservationNo);
         return true;
     }
 
@@ -815,6 +829,94 @@ public class SpotReservationServiceImpl implements SpotReservationService {
         return summary == null ? 0 : defaultNumber(summary.getVisitorCount(), 0);
     }
 
+    private List<SpotReservationVisitor> validateReservationVisitors(SpotReservationCreateDTO dto,
+                                                                    SysNormalUser user,
+                                                                    SpotReservationSlot slot) {
+        if (!Integer.valueOf(1).equals(user.getRealNameStatus()) || !StringUtils.hasText(user.getIdCardHash())) {
+            throw new BaseException("请先完成实名认证后再预约");
+        }
+
+        List<ReservationVisitorDTO> requestVisitors = dto.getVisitors();
+        if (requestVisitors == null || requestVisitors.isEmpty()) {
+            if (dto.getVisitorCount() != null && dto.getVisitorCount() == 1) {
+                return List.of(buildBookerVisitorFromUser(user, slot));
+            }
+            throw new BaseException("多人预约必须填写每位入园人的身份信息");
+        }
+        if (requestVisitors.size() > 5) {
+            throw new BaseException("单次预约最多支持5名游客");
+        }
+
+        List<SpotReservationVisitor> visitors = new ArrayList<>();
+        Set<String> currentOrderHashes = new java.util.HashSet<>();
+        boolean hasBooker = false;
+        for (ReservationVisitorDTO visitorDTO : requestVisitors) {
+            if (visitorDTO == null || !StringUtils.hasText(visitorDTO.getRealName()) || !StringUtils.hasText(visitorDTO.getIdCardNo())) {
+                throw new BaseException("游客姓名和身份证号不能为空");
+            }
+            String idCardNo = IdentityUtil.normalizeIdCardNo(visitorDTO.getIdCardNo());
+            if (!IdentityUtil.isValidIdCardNo(idCardNo)) {
+                throw new BaseException("游客身份证号格式不正确");
+            }
+            String idCardHash = IdentityUtil.hashIdCardNo(idCardNo);
+            if (!currentOrderHashes.add(idCardHash)) {
+                throw new BaseException("同一预约单中不能重复填写同一身份证");
+            }
+            if (visitorMapper.countActiveByIdentity(idCardHash, slot.getSpotId(), slot.getVisitDate()) > 0) {
+                throw new BaseException("该游客已预约当前景点同一天的名额");
+            }
+
+            boolean booker = Boolean.TRUE.equals(visitorDTO.getBooker());
+            if (booker) {
+                if (hasBooker) {
+                    throw new BaseException("预约本人只能有一位");
+                }
+                if (!idCardHash.equals(user.getIdCardHash())) {
+                    throw new BaseException("预约本人身份信息必须与当前账号实名信息一致");
+                }
+                hasBooker = true;
+            }
+            visitors.add(SpotReservationVisitor.builder()
+                    .realName(visitorDTO.getRealName().trim())
+                    .idCardMasked(IdentityUtil.maskIdCardNo(idCardNo))
+                    .idCardHash(idCardHash)
+                    .booker(booker ? 1 : 0)
+                    .status(STATUS_CONFIRMED)
+                    .build());
+        }
+        if (!hasBooker) {
+            throw new BaseException("预约游客中必须包含当前实名用户本人");
+        }
+        return visitors;
+    }
+
+    private SpotReservationVisitor buildBookerVisitorFromUser(SysNormalUser user, SpotReservationSlot slot) {
+        if (visitorMapper.countActiveByIdentity(user.getIdCardHash(), slot.getSpotId(), slot.getVisitDate()) > 0) {
+            throw new BaseException("当前实名用户已预约当前景点同一天的名额");
+        }
+        return SpotReservationVisitor.builder()
+                .realName(user.getRealName())
+                .idCardMasked(user.getIdCardMasked())
+                .idCardHash(user.getIdCardHash())
+                .booker(1)
+                .status(STATUS_CONFIRMED)
+                .build();
+    }
+
+    private void fillVisitorOrderInfo(List<SpotReservationVisitor> visitors, SpotReservationOrder order, LocalDateTime now) {
+        for (SpotReservationVisitor visitor : visitors) {
+            visitor.setOrderId(order.getId());
+            visitor.setReservationNo(order.getReservationNo());
+            visitor.setUserId(order.getUserId());
+            visitor.setScenicAreaId(order.getScenicAreaId());
+            visitor.setSpotId(order.getSpotId());
+            visitor.setSlotId(order.getSlotId());
+            visitor.setVisitDate(order.getVisitDate());
+            visitor.setCreateTime(now);
+            visitor.setUpdateTime(now);
+        }
+    }
+
     private double calculateRate(int numerator, int denominator) {
         if (denominator <= 0) {
             return 0D;
@@ -852,8 +954,14 @@ public class SpotReservationServiceImpl implements SpotReservationService {
         if (dto == null || dto.getUserId() == null || dto.getSlotId() == null) {
             throw new BaseException("预约参数不能为空");
         }
-        if (dto.getVisitorCount() == null || dto.getVisitorCount() <= 0) {
+        if ((dto.getVisitors() == null || dto.getVisitors().isEmpty())
+                && (dto.getVisitorCount() == null || dto.getVisitorCount() <= 0)) {
             throw new BaseException("预约人数必须大于0");
+        }
+        if (dto.getVisitors() != null && !dto.getVisitors().isEmpty()
+                && dto.getVisitorCount() != null
+                && !dto.getVisitorCount().equals(dto.getVisitors().size())) {
+            throw new BaseException("预约人数必须与游客身份信息数量一致");
         }
         normalizeSourceType(dto.getSourceType());
     }
@@ -1000,7 +1108,16 @@ public class SpotReservationServiceImpl implements SpotReservationService {
         ScenicArea area = scenicAreaMapper.getById(order.getScenicAreaId());
         ScenicSpot spot = scenicSpotMapper.getById(order.getSpotId());
         SysNormalUser user = sysNormalUserMapper.getById(order.getUserId());
-        return SpotReservationOrderVO.builder().id(order.getId()).reservationNo(order.getReservationNo()).userId(order.getUserId()).nickname(user == null ? null : user.getNickname()).scenicAreaId(order.getScenicAreaId()).scenicName(area == null ? null : area.getScenicName()).spotId(order.getSpotId()).spotName(spot == null ? null : spot.getSpotName()).slotId(order.getSlotId()).visitDate(order.getVisitDate()).startTime(order.getStartTime()).endTime(order.getEndTime()).visitorCount(order.getVisitorCount()).contactName(order.getContactName()).contactPhone(order.getContactPhone()).status(order.getStatus()).sourceType(order.getSourceType()).agentSessionCode(order.getAgentSessionCode()).clientRequestId(order.getClientRequestId()).remark(order.getRemark()).cancelReason(order.getCancelReason()).cancelTime(order.getCancelTime()).createTime(order.getCreateTime()).updateTime(order.getUpdateTime()).build();
+        List<ReservationVisitorVO> visitors = visitorMapper.listByReservationNo(order.getReservationNo())
+                .stream()
+                .map(visitor -> ReservationVisitorVO.builder()
+                        .realName(visitor.getRealName())
+                        .idCardMasked(visitor.getIdCardMasked())
+                        .booker(Integer.valueOf(1).equals(visitor.getBooker()))
+                        .status(visitor.getStatus())
+                        .build())
+                .collect(Collectors.toList());
+        return SpotReservationOrderVO.builder().id(order.getId()).reservationNo(order.getReservationNo()).userId(order.getUserId()).nickname(user == null ? null : user.getNickname()).scenicAreaId(order.getScenicAreaId()).scenicName(area == null ? null : area.getScenicName()).spotId(order.getSpotId()).spotName(spot == null ? null : spot.getSpotName()).slotId(order.getSlotId()).visitDate(order.getVisitDate()).startTime(order.getStartTime()).endTime(order.getEndTime()).visitorCount(order.getVisitorCount()).visitors(visitors).contactName(order.getContactName()).contactPhone(order.getContactPhone()).status(order.getStatus()).sourceType(order.getSourceType()).agentSessionCode(order.getAgentSessionCode()).clientRequestId(order.getClientRequestId()).remark(order.getRemark()).cancelReason(order.getCancelReason()).cancelTime(order.getCancelTime()).createTime(order.getCreateTime()).updateTime(order.getUpdateTime()).build();
     }
 
     private String buildSlotMatchReply(String spotName, SpotReservationSlotVO slot, int visitorCount, boolean exactMatch, LocalTime targetTime) {

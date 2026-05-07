@@ -178,6 +178,16 @@ public class SpotReservationController {
     }
 
     /**
+     * Agent查询景区下所有可预约景点。
+     */
+    @GetMapping("/agent/spots/enabled")
+    public Result<List<ReservationEnabledSpotVO>> listAgentReservationEnabledSpots(@RequestParam(required = false) Long scenicAreaId,
+                                                                                   @RequestParam(required = false) String keyword) {
+        log.info("收到Agent可预约景点列表查询请求，scenicAreaId={}, keyword={}", scenicAreaId, keyword);
+        return Result.success(spotReservationService.listReservationEnabledSpots(scenicAreaId, keyword));
+    }
+
+    /**
      * Agent根据景点名称搜索可预约景点。
      */
     @GetMapping("/agent/spots/search")
@@ -231,9 +241,10 @@ public class SpotReservationController {
      */
     @PostMapping("/agent/orders")
     public Result<AgentReservationOrderResultVO> createAgentReservationOrder(@RequestBody AgentReservationOrderDTO dto) {
-        log.info("收到Agent预约订单创建请求，userId={}, slotId={}, agentSessionCode={}",
+        log.info("收到Agent预约订单创建请求，userId={}, slotId={}, visitorCount={}, agentSessionCode={}",
                 dto == null ? null : dto.getUserId(),
                 dto == null ? null : dto.getSlotId(),
+                dto == null ? null : dto.getVisitorCount(),
                 dto == null ? null : dto.getAgentSessionCode());
         return Result.success(spotReservationService.createAgentReservationOrder(dto));
     }

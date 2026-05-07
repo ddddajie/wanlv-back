@@ -16,6 +16,11 @@
         <result column="age" property="age"/>
         <result column="interest_tags" property="interestTags"/>
         <result column="status" property="status"/>
+        <result column="real_name_status" property="realNameStatus"/>
+        <result column="real_name" property="realName"/>
+        <result column="id_card_masked" property="idCardMasked"/>
+        <result column="id_card_hash" property="idCardHash"/>
+        <result column="real_name_time" property="realNameTime"/>
         <result column="last_login_time" property="lastLoginTime"/>
         <result column="deleted" property="deleted"/>
         <result column="create_time" property="createTime"/>
@@ -34,6 +39,11 @@
                age,
                interest_tags,
                status,
+               real_name_status,
+               real_name,
+               id_card_masked,
+               id_card_hash,
+               real_name_time,
                last_login_time,
                deleted,
                create_time,
@@ -55,12 +65,45 @@
                age,
                interest_tags,
                status,
+               real_name_status,
+               real_name,
+               id_card_masked,
+               id_card_hash,
+               real_name_time,
                last_login_time,
                deleted,
                create_time,
                update_time
         from sys_normal_user
         where id = #{id}
+        limit 1
+    </select>
+
+    <select id="getByIdCardHash" resultMap="SysNormalUserResultMap">
+        select id,
+               username,
+               password,
+               nickname,
+               phone,
+               email,
+               avatar_url,
+               gender,
+               age,
+               interest_tags,
+               status,
+               real_name_status,
+               real_name,
+               id_card_masked,
+               id_card_hash,
+               real_name_time,
+               last_login_time,
+               deleted,
+               create_time,
+               update_time
+        from sys_normal_user
+        where id_card_hash = #{idCardHash}
+          and real_name_status = 1
+          and deleted = 0
         limit 1
     </select>
 
@@ -76,6 +119,11 @@
             age,
             interest_tags,
             status,
+            real_name_status,
+            real_name,
+            id_card_masked,
+            id_card_hash,
+            real_name_time,
             last_login_time,
             deleted,
             create_time,
@@ -91,6 +139,11 @@
             #{age},
             #{interestTags},
             #{status},
+            #{realNameStatus},
+            #{realName},
+            #{idCardMasked},
+            #{idCardHash},
+            #{realNameTime},
             #{lastLoginTime},
             #{deleted},
             #{createTime},
@@ -131,6 +184,21 @@
             <if test="status != null">
                 status = #{status},
             </if>
+            <if test="realNameStatus != null">
+                real_name_status = #{realNameStatus},
+            </if>
+            <if test="realName != null and realName != ''">
+                real_name = #{realName},
+            </if>
+            <if test="idCardMasked != null and idCardMasked != ''">
+                id_card_masked = #{idCardMasked},
+            </if>
+            <if test="idCardHash != null and idCardHash != ''">
+                id_card_hash = #{idCardHash},
+            </if>
+            <if test="realNameTime != null">
+                real_name_time = #{realNameTime},
+            </if>
             update_time = now()
         </set>
         where id = #{id}
@@ -160,6 +228,18 @@
         where id = #{id}
     </update>
 
+    <update id="updateRealNameInfo">
+        update sys_normal_user
+        set real_name_status = #{realNameStatus},
+            real_name = #{realName},
+            id_card_masked = #{idCardMasked},
+            id_card_hash = #{idCardHash},
+            real_name_time = #{realNameTime},
+            update_time = now()
+        where id = #{id}
+          and deleted = 0
+    </update>
+
     <select id="listAll" resultMap="SysNormalUserResultMap">
         select id,
                username,
@@ -172,6 +252,11 @@
                age,
                interest_tags,
                status,
+               real_name_status,
+               real_name,
+               id_card_masked,
+               id_card_hash,
+               real_name_time,
                last_login_time,
                deleted,
                create_time,

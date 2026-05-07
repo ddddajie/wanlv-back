@@ -46,7 +46,53 @@ Agent 推荐流程：
 7. 字段齐全后调用创建预约接口
 8. 创建成功后，优先使用后端返回的 `replyText` 作为最终回复
 
-## 3. Agent 根据景点名称搜索可预约景点
+## 3. Agent 查询景区下所有可预约景点
+
+```http
+GET /reservation/agent/spots/enabled
+```
+
+查询参数：
+
+| 参数 | 必填 | 说明 |
+|---|---|---|
+| `scenicAreaId` | 否 | 景区 ID；不传则查询所有景区下已开启预约的景点 |
+| `keyword` | 否 | 景点名称关键字；用于在景区内进一步过滤 |
+
+请求示例：
+
+```http
+GET /reservation/agent/spots/enabled?scenicAreaId=1
+```
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": [
+    {
+      "spotId": 1,
+      "scenicAreaId": 1,
+      "spotName": "古城博物馆",
+      "shortIntro": "展示古城历史文化的核心展馆",
+      "reservationEnabled": 1,
+      "reservationNotice": "请提前30分钟到场",
+      "advanceReservationDays": 7,
+      "minAdvanceMinutes": 30
+    }
+  ]
+}
+```
+
+Agent 使用建议：
+
+- 当用户只说明景区、没有明确景点名称时，先调用该接口列出可预约候选景点
+- 当用户已经提供景点名称时，优先调用 `/reservation/agent/spots/search` 获取带匹配置信度的结果
+- 返回空数组表示当前景区下暂无已开启预约的景点，Agent 应提示用户更换景区或改用普通游览咨询
+
+## 4. Agent 根据景点名称搜索可预约景点
 
 ```http
 GET /reservation/agent/spots/search
@@ -104,7 +150,7 @@ Agent 使用建议：
 | `NAME_FUZZY` | 模糊匹配结果 |
 | `UNKNOWN` | 无法判断匹配方式 |
 
-## 4. Agent 查询指定时间附近的可预约时段
+## 5. Agent 查询指定时间附近的可预约时段
 
 ```http
 GET /reservation/agent/slots/match
@@ -211,7 +257,7 @@ Agent 使用建议：
 - 如果 `matchType = NEAREST`，建议先让用户确认是否接受最近时段，再下单
 - `candidateSlots` 只包含 `available = true` 且 `remainingCount >= visitorCount` 的时段
 
-## 5. Agent 创建预约订单
+## 6. Agent 创建预约订单
 
 ```http
 POST /reservation/agent/orders
@@ -224,6 +270,18 @@ POST /reservation/agent/orders
   "userId": 1,
   "slotId": 10,
   "visitorCount": 2,
+  "visitors": [
+    {
+      "realName": "张三",
+      "idCardNo": "110101199001011234",
+      "booker": true
+    },
+    {
+      "realName": "李四",
+      "idCardNo": "110101199002021234",
+      "booker": false
+    }
+  ],
   "agentSessionCode": "session-20260504-001",
   "clientRequestId": "agent-session-20260504-001-tool-001",
   "remark": "用户自然语言触发预约"
@@ -236,7 +294,11 @@ POST /reservation/agent/orders
 |---|---|---|
 | `userId` | 是 | 当前普通用户 ID |
 | `slotId` | 是 | 预约时段 ID，来自时段匹配接口的 `matchedSlot.slotId` |
-| `visitorCount` | 是 | 预约人数，必须大于 `0` |
+| `visitorCount` | 是 | 预约人数，必须大于 `0`；传 `visitors` 时必须等于 `visitors.length` |
+| `visitors` | 多人必填 | 入园人实名信息列表；只预约本人 1 人时可以不传 |
+| `visitors[].realName` | 是 | 入园人真实姓名 |
+| `visitors[].idCardNo` | 是 | 入园人身份证号 |
+| `visitors[].booker` | 是 | 是否为当前账号本人，必须且只能有一位为 `true` |
 | `agentSessionCode` | 否 | Agent 会话编码 |
 | `clientRequestId` | 否 | 幂等请求 ID，强烈建议传 |
 | `remark` | 否 | 备注 |
@@ -245,8 +307,11 @@ POST /reservation/agent/orders
 
 - 后端内部固定 `sourceType = AGENT`
 - 后端根据 `userId` 查询用户信息，使用用户 `nickname` 作为联系人姓名，使用用户 `phone` 作为联系人手机号；如果 `nickname` 为空，则使用 `username`
+- 后端要求用户已完成实名认证；只预约本人 1 人时，后端会自动使用账号实名信息生成入园人
+- 多人预约必须传 `visitors`，Agent 需要先向用户追问每位同行人的姓名和身份证号
+- `booker = true` 的游客身份证必须与当前账号实名信息一致
 - 如果 `clientRequestId` 已存在，后端会直接返回已有订单，避免重复预约
-- 后端会校验用户状态、景点预约状态、预约日期范围、最少提前预约时间、剩余名额等规则
+- 后端会校验用户状态、景点预约状态、预约日期范围、最少提前预约时间、剩余名额、实名状态、同一身份证重复预约等规则
 
 响应示例：
 
@@ -279,7 +344,7 @@ Agent 使用建议：
 - 每次真实下单工具调用都应生成稳定且唯一的 `clientRequestId`
 - 如果是同一次工具调用的网络重试，应复用同一个 `clientRequestId`
 
-## 6. Agent 查询用户近期预约
+## 7. Agent 查询用户近期预约
 
 ```http
 GET /reservation/agent/orders/recent
@@ -331,7 +396,7 @@ Agent 使用建议：
 - 用户没有提供预约编号但想取消预约时，先调用该接口辅助定位订单
 - 如果返回多条可能订单，Agent 应让用户确认具体取消哪一条
 
-## 7. Agent 推荐可预约时段
+## 8. Agent 推荐可预约时段
 
 ```http
 GET /reservation/agent/slots/recommend
@@ -384,7 +449,7 @@ Agent 使用建议：
 - 推荐结果按日期和与 `targetTime` 的接近程度排序
 - 用户接受某个推荐时段后，再使用该时段 `slotId` 调用创建预约接口
 
-## 8. Agent 取消预约订单
+## 9. Agent 取消预约订单
 
 ```http
 POST /reservation/agent/orders/{reservationNo}/cancel
@@ -425,7 +490,7 @@ Agent 使用建议：
 - 用户没有提供预约编号时，先调用近期预约接口辅助定位
 - 如果近期预约中有多条候选，不要直接取消，应先让用户确认
 
-## 9. 常见失败情况
+## 10. 常见失败情况
 
 失败响应示例：
 
@@ -457,12 +522,17 @@ Agent 处理建议：
 - 用户状态异常：提示用户先检查登录状态或账户状态
 - 其他业务错误：将后端 `msg` 转成自然语言说明，不要继续重复下单
 
-## 7. Agent 工具定义参考
+## 11. Agent 工具定义参考
 
 ```ts
 type SearchReservationSpotsInput = {
   keyword: string
   scenicAreaId?: number
+}
+
+type ListReservationEnabledSpotsInput = {
+  scenicAreaId?: number
+  keyword?: string
 }
 
 type MatchReservationSlotInput = {

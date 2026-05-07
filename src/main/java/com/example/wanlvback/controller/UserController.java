@@ -6,6 +6,7 @@ import com.example.wanlvback.pojo.dto.AdminUserUpdateDTO;
 import com.example.wanlvback.pojo.dto.NormalUserLoginDTO;
 import com.example.wanlvback.pojo.dto.NormalUserRegisterDTO;
 import com.example.wanlvback.pojo.dto.NormalUserUpdateDTO;
+import com.example.wanlvback.pojo.dto.RealNameVerifyDTO;
 import com.example.wanlvback.pojo.vo.AdminUserVO;
 import com.example.wanlvback.pojo.vo.NormalUserVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
@@ -79,6 +80,15 @@ public class UserController {
     public Result<UserLoginVO> normalLogin(@RequestBody NormalUserLoginDTO loginDTO) {
         log.info("收到普通用户登录请求，username={}", loginDTO.getUsername());
         return Result.success(userService.normalLogin(loginDTO));
+    }
+
+    /**
+     * 普通用户实名认证。
+     */
+    @PostMapping("/normal/real-name/verify")
+    public Result<NormalUserVO> verifyNormalUserRealName(@RequestBody RealNameVerifyDTO verifyDTO) {
+        log.info("收到普通用户实名认证请求，userId={}", verifyDTO == null ? null : verifyDTO.getUserId());
+        return Result.success(userService.verifyNormalUserRealName(verifyDTO));
     }
 
     /**

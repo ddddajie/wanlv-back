@@ -7,6 +7,7 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -25,6 +26,7 @@ public class SpotReservationOrderVO implements Serializable {
     private LocalTime startTime;
     private LocalTime endTime;
     private Integer visitorCount;
+    private List<ReservationVisitorVO> visitors;
     private String contactName;
     private String contactPhone;
     private String status;

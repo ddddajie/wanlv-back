@@ -34,6 +34,14 @@ public class NormalUserVO implements Serializable {
 
     private Integer status; // 状态
 
+    private Integer realNameStatus; // 实名状态：0未实名，1已实名，2实名失败
+
+    private String realName; // 真实姓名
+
+    private String idCardMasked; // 脱敏身份证号
+
+    private LocalDateTime realNameTime; // 实名通过时间
+
     private LocalDateTime lastLoginTime; // 最后登录时间
 
     private LocalDateTime createTime; // 创建时间

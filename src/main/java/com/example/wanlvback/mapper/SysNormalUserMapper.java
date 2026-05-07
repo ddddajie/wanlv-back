@@ -28,6 +28,8 @@ public interface SysNormalUserMapper {
      */
     SysNormalUser getById(@Param("id") Long id);
 
+    SysNormalUser getByIdCardHash(@Param("idCardHash") String idCardHash);
+
     /**
      * 新增普通用户。
      *
@@ -63,6 +65,13 @@ public interface SysNormalUserMapper {
      * @return 影响行数
      */
     int updateLastLoginTime(@Param("id") Long id, @Param("lastLoginTime") LocalDateTime lastLoginTime);
+
+    int updateRealNameInfo(@Param("id") Long id,
+                           @Param("realNameStatus") Integer realNameStatus,
+                           @Param("realName") String realName,
+                           @Param("idCardMasked") String idCardMasked,
+                           @Param("idCardHash") String idCardHash,
+                           @Param("realNameTime") LocalDateTime realNameTime);
 
     /**
      * 查询全部未删除普通用户。
