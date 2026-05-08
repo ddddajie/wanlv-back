@@ -6,9 +6,12 @@ import com.example.wanlvback.pojo.dto.AdminUserUpdateDTO;
 import com.example.wanlvback.pojo.dto.NormalUserLoginDTO;
 import com.example.wanlvback.pojo.dto.NormalUserRegisterDTO;
 import com.example.wanlvback.pojo.dto.NormalUserUpdateDTO;
+import com.example.wanlvback.pojo.dto.PhoneCodeLoginDTO;
+import com.example.wanlvback.pojo.dto.PhoneCodeSendDTO;
 import com.example.wanlvback.pojo.dto.RealNameVerifyDTO;
 import com.example.wanlvback.pojo.vo.AdminUserVO;
 import com.example.wanlvback.pojo.vo.NormalUserVO;
+import com.example.wanlvback.pojo.vo.PhoneCodeSendVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
 import com.example.wanlvback.result.Result;
 import com.example.wanlvback.service.UserService;
@@ -82,6 +85,24 @@ public class UserController {
     public Result<UserLoginVO> normalLogin(@RequestBody NormalUserLoginDTO loginDTO) {
         log.info("收到普通用户登录请求，username={}", loginDTO.getUsername());
         return Result.success(userService.normalLogin(loginDTO));
+    }
+
+    /**
+     * 发送普通用户手机验证码。
+     */
+    @PostMapping("/normal/code/send")
+    public Result<PhoneCodeSendVO> sendNormalUserPhoneCode(@RequestBody PhoneCodeSendDTO sendDTO) {
+        log.info("收到普通用户手机验证码发送请求，phone={}", sendDTO == null ? null : sendDTO.getPhone());
+        return Result.success(userService.sendNormalUserPhoneCode(sendDTO));
+    }
+
+    /**
+     * 普通用户手机验证码登录，未注册手机号会自动创建账号。
+     */
+    @PostMapping("/normal/code/login")
+    public Result<UserLoginVO> normalPhoneCodeLogin(@RequestBody PhoneCodeLoginDTO loginDTO) {
+        log.info("收到普通用户手机验证码登录请求，phone={}", loginDTO == null ? null : loginDTO.getPhone());
+        return Result.success(userService.normalPhoneCodeLogin(loginDTO));
     }
 
     /**

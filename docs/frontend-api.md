@@ -9,8 +9,8 @@
 - 默认 Base URL：`http://127.0.0.1:8080`
 - 当前接口统一前缀：`/user`
 - 请求体格式：`application/json`
-- 当前阶段没有实际启用的 token 鉴权和登录拦截器
-- 当前阶段前端不要依赖 `Authorization` 请求头
+- 当前后端已启用 JWT 鉴权，登录/注册成功后需要缓存 `data.token`
+- 除登录、注册、发送验证码等白名单接口外，前端请求需要携带 `Authorization: Bearer <token>`
 - 当前阶段接口成功或失败，前端都要优先判断响应体中的 `code`
 
 推荐前端 axios 配置：
@@ -88,6 +88,15 @@ export default request
 - `普通用户账号已被禁用`
 - `普通用户账号或密码错误`
 - `普通用户账号已存在`
+- `当前账号未设置密码，请使用验证码登录或先设置密码`
+- `手机号不能为空`
+- `手机号格式不正确`
+- `手机号已绑定其他普通用户账号`
+- `验证码不能为空`
+- `请先获取验证码`
+- `验证码错误`
+- `验证码已过期，请重新获取`
+- `验证码已使用，请重新获取`
 - `请求参数格式错误`
 - `数据已存在`
 - `系统繁忙，请稍后重试`
@@ -109,6 +118,8 @@ export interface UserLoginVO {
   userType: 'admin' | 'normal'
   role: string
   status: number
+  realNameStatus: number | null
+  token: string
   lastLoginTime: string | null
 }
 ```
@@ -121,9 +132,29 @@ export interface UserLoginVO {
 - `userType`: 用户类型，管理员为 `admin`，普通用户为 `normal`
 - `role`: 角色
 - `status`: 状态，当前启用为 `1`，禁用为 `0`
+- `realNameStatus`: 普通用户实名状态，管理员为空
+- `token`: JWT 登录凭证
 - `lastLoginTime`: 最后登录时间，建议前端按字符串处理
 
-### 4.2 通用响应结构
+### 4.2 手机验证码发送返回对象 `PhoneCodeSendVO`
+
+```ts
+export interface PhoneCodeSendVO {
+  phone: string
+  code: string
+  expireSeconds: number
+  expireTime: string
+}
+```
+
+字段说明：
+
+- `phone`: 手机号
+- `code`: 验证码。当前是模拟短信阶段，后端直接返回给前端联调；后续接入真实短信后可能不再返回
+- `expireSeconds`: 有效秒数，当前为 `300`
+- `expireTime`: 过期时间，建议前端按字符串处理
+
+### 4.3 通用响应结构
 
 ```ts
 export interface ApiResponse<T> {
@@ -142,6 +173,8 @@ export interface ApiResponse<T> {
 3. 新增管理员
 4. 普通用户注册
 5. 普通用户登录
+6. 发送普通用户手机验证码
+7. 普通用户手机验证码登录/自动注册
 
 ---
 
@@ -478,6 +511,133 @@ export interface NormalUserLoginDTO {
 - 登录成功后缓存用户信息
 - 根据 `userType` 和 `role` 决定进入普通用户端还是管理端
 
+### 6.6 发送普通用户手机验证码
+
+- 路径：`/user/normal/code/send`
+- 方法：`POST`
+- 用途：模拟发送手机验证码
+- 是否需要登录：否
+
+请求参数：
+
+```ts
+export interface PhoneCodeSendDTO {
+  phone: string
+}
+```
+
+字段说明：
+
+- `phone`: 手机号，必填，后端按中国大陆 11 位手机号校验：`^1[3-9]\d{9}$`
+
+请求示例：
+
+```json
+{
+  "phone": "13900139000"
+}
+```
+
+成功响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "phone": "13900139000",
+    "code": "582193",
+    "expireSeconds": 300,
+    "expireTime": "2026-05-08T14:20:00"
+  }
+}
+```
+
+失败场景：
+
+- 手机号不能为空
+- 手机号格式不正确
+
+前端建议：
+
+- 当前模拟短信阶段，可以把 `data.code` 显示在开发提示里，或自动填入验证码输入框，方便联调。
+- 点击发送后开启 300 秒倒计时；倒计时内允许禁用发送按钮，避免频繁点击。
+- 同一手机号重复发送时，后端会覆盖旧验证码。
+
+### 6.7 普通用户手机验证码登录/自动注册
+
+- 路径：`/user/normal/code/login`
+- 方法：`POST`
+- 用途：手机号验证码登录；手机号未注册时自动创建普通用户账号
+- 是否需要登录：否
+
+请求参数：
+
+```ts
+export interface PhoneCodeLoginDTO {
+  phone: string
+  code: string
+}
+```
+
+字段说明：
+
+- `phone`: 手机号，必填
+- `code`: 验证码，必填，使用 `/user/normal/code/send` 返回的 `code`
+
+请求示例：
+
+```json
+{
+  "phone": "13900139000",
+  "code": "582193"
+}
+```
+
+成功响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "id": 12,
+    "username": "13900139000",
+    "displayName": "用户A8k21Q",
+    "userType": "normal",
+    "role": "normal_user",
+    "status": 1,
+    "realNameStatus": 0,
+    "token": "eyJhbGciOiJIUzI1NiJ9...",
+    "lastLoginTime": "2026-05-08T14:16:35"
+  }
+}
+```
+
+自动注册规则：
+
+- 新手机号首次验证码登录时，后端会自动创建普通用户。
+- 新用户 `username = phone`，`phone = phone`，`password = null`。
+- 昵称由后端生成，格式类似 `用户A8k21Q`。
+- 其他基本信息先留空，后续通过个人资料页或实名认证补全。
+
+失败场景：
+
+- 手机号不能为空
+- 手机号格式不正确
+- 验证码不能为空
+- 请先获取验证码
+- 验证码错误
+- 验证码已过期，请重新获取
+- 验证码已使用，请重新获取
+- 普通用户账号已被禁用
+
+前端建议：
+
+- 普通用户端推荐默认展示“手机号验证码登录”，账号密码登录作为备用入口。
+- 登录成功后按普通登录一样缓存 `UserLoginVO` 和 `token`。
+- 如果 `realNameStatus !== 1`，预约前仍要引导用户完成实名认证。
+
 ## 7. 推荐前端接口封装
 
 ```ts
@@ -496,7 +656,16 @@ export interface UserLoginVO {
   userType: 'admin' | 'normal'
   role: string
   status: number
+  realNameStatus: number | null
+  token: string
   lastLoginTime: string | null
+}
+
+export interface PhoneCodeSendVO {
+  phone: string
+  code: string
+  expireSeconds: number
+  expireTime: string
 }
 
 export const initSuperAdminApi = () =>
@@ -540,6 +709,17 @@ export const normalLoginApi = (data: {
   password: string
 }) =>
   request.post<any, ApiResponse<UserLoginVO>>('/user/normal/login', data)
+
+export const sendNormalUserPhoneCodeApi = (data: {
+  phone: string
+}) =>
+  request.post<any, ApiResponse<PhoneCodeSendVO>>('/user/normal/code/send', data)
+
+export const normalPhoneCodeLoginApi = (data: {
+  phone: string
+  code: string
+}) =>
+  request.post<any, ApiResponse<UserLoginVO>>('/user/normal/code/login', data)
 ```
 
 ## 8. 页面开发建议
@@ -553,9 +733,11 @@ export const normalLoginApi = (data: {
 
 ### 8.2 Element Plus 表单建议
 
-- 登录页使用 `el-form + el-input + el-button`
+- 普通用户登录页默认使用手机号验证码登录：手机号输入框、验证码输入框、发送验证码按钮、登录按钮
+- 账号密码登录保留为备用 tab 或切换入口
 - 密码框统一加 `show-password`
 - 注册页对手机号、邮箱做前端格式校验
+- 手机号校验建议使用 `/^1[3-9]\d{9}$/`
 - 提交按钮要加 loading，避免重复提交
 - 成功后统一 `ElMessage.success`
 - 失败直接读取后端 `msg` 提示
@@ -565,6 +747,7 @@ export const normalLoginApi = (data: {
 ```ts
 export interface AuthState {
   userInfo: UserLoginVO | null
+  token: string
   isLogin: boolean
 }
 ```
@@ -572,6 +755,7 @@ export interface AuthState {
 建议缓存：
 
 - `userInfo`
+- `token`
 - `isLogin`
 
 当前不建议缓存：
@@ -580,11 +764,9 @@ export interface AuthState {
 
 ## 9. 当前接口限制
 
-- 当前后端未返回 JWT token
-- 当前后端未实现真正的登录态校验
 - 当前管理员新增接口仍依赖请求体中的 `operatorUsername + operatorPassword`
 - 当前普通用户注册接口中的 `interestTags` 不是数组，而是字符串
-- 当前只有用户相关接口，暂无景区、路线、消息等业务接口可供前端联调
+- 手机验证码当前是后端模拟短信，响应会直接返回验证码；后续接入真实短信后前端不应依赖返回 `code`
 
 ## 10. 给前端 Codex 的任务说明建议
 
@@ -592,16 +774,17 @@ export interface AuthState {
 
 ```text
 请基于 docs/frontend-api.md 开发一个 Vue3 + Element Plus 前端项目，优先完成：
-1. 普通用户登录页
-2. 普通用户注册页
+1. 普通用户手机号验证码登录页，账号密码登录作为备用 tab
+2. 普通用户资料补全/编辑页，注册表单可降级为账号密码注册备用入口
 3. 管理员登录页
 4. 新增管理员页
 
 要求：
 1. 使用 axios 封装请求
-2. 使用 pinia 管理登录用户信息
+2. 使用 pinia 管理登录用户信息和 token
 3. 所有接口统一按响应体 code 判断成功失败
 4. 失败提示直接显示后端 msg
-5. 表单使用 Element Plus，并补充必要校验
-6. 页面风格简洁、可直接联调后端
+5. 普通用户默认走 /user/normal/code/send 和 /user/normal/code/login
+6. 表单使用 Element Plus，并补充必要校验
+7. 页面风格简洁、可直接联调后端
 ```

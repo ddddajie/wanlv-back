@@ -10,11 +10,14 @@ import com.example.wanlvback.pojo.dto.AdminUserUpdateDTO;
 import com.example.wanlvback.pojo.dto.NormalUserLoginDTO;
 import com.example.wanlvback.pojo.dto.NormalUserRegisterDTO;
 import com.example.wanlvback.pojo.dto.NormalUserUpdateDTO;
+import com.example.wanlvback.pojo.dto.PhoneCodeLoginDTO;
+import com.example.wanlvback.pojo.dto.PhoneCodeSendDTO;
 import com.example.wanlvback.pojo.dto.RealNameVerifyDTO;
 import com.example.wanlvback.pojo.entity.SysAdminUser;
 import com.example.wanlvback.pojo.entity.SysNormalUser;
 import com.example.wanlvback.pojo.vo.AdminUserVO;
 import com.example.wanlvback.pojo.vo.NormalUserVO;
+import com.example.wanlvback.pojo.vo.PhoneCodeSendVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
 import com.example.wanlvback.result.PageResult;
 import com.example.wanlvback.service.UserService;
@@ -30,10 +33,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -42,6 +48,13 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class UserServiceImpl implements UserService {
+
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
+    private static final long PHONE_CODE_EXPIRE_SECONDS = 300L;
+    private static final int PHONE_CODE_BOUND = 1_000_000;
+    private static final String NICKNAME_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final Map<String, PhoneCodeCache> PHONE_CODE_CACHE = new ConcurrentHashMap<>();
 
     @Autowired
     private SysAdminUserMapper sysAdminUserMapper;
@@ -152,6 +165,7 @@ public class UserServiceImpl implements UserService {
             log.info("普通用户注册失败，账号已存在，username={}", registerDTO.getUsername());
             throw new BaseException("普通用户账号已存在");
         }
+        checkNormalPhoneDuplicate(registerDTO.getPhone(), null);
 
         LocalDateTime now = LocalDateTime.now();
         SysNormalUser normalUser = new SysNormalUser();
@@ -172,6 +186,58 @@ public class UserServiceImpl implements UserService {
         normalUser.setUpdateTime(now);
         sysNormalUserMapper.insert(normalUser);
         log.info("普通用户注册成功，username={}", normalUser.getUsername());
+        return buildNormalLoginVO(normalUser);
+    }
+
+    @Override
+    public PhoneCodeSendVO sendNormalUserPhoneCode(PhoneCodeSendDTO sendDTO) {
+        String phone = normalizePhone(sendDTO == null ? null : sendDTO.getPhone());
+        checkPhone(phone);
+
+        String code = String.format("%06d", SECURE_RANDOM.nextInt(PHONE_CODE_BOUND));
+        LocalDateTime expireTime = LocalDateTime.now().plusSeconds(PHONE_CODE_EXPIRE_SECONDS);
+
+        // 重点：当前没有真实短信通道，验证码暂存在内存并直接返回给前端联调。
+        PHONE_CODE_CACHE.put(phone, new PhoneCodeCache(code, expireTime));
+        log.info("模拟发送普通用户手机验证码，phone={}, code={}, expireTime={}", phone, code, expireTime);
+
+        return PhoneCodeSendVO.builder()
+                .phone(phone)
+                .code(code)
+                .expireSeconds(PHONE_CODE_EXPIRE_SECONDS)
+                .expireTime(expireTime)
+                .build();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public UserLoginVO normalPhoneCodeLogin(PhoneCodeLoginDTO loginDTO) {
+        String phone = normalizePhone(loginDTO == null ? null : loginDTO.getPhone());
+        checkPhone(phone);
+        if (loginDTO == null || !StringUtils.hasText(loginDTO.getCode())) {
+            throw new BaseException("验证码不能为空");
+        }
+        verifyPhoneCode(phone, loginDTO.getCode().trim());
+        log.info("普通用户发起手机验证码登录，phone={}", phone);
+
+        SysNormalUser normalUser = sysNormalUserMapper.getByPhone(phone);
+        if (normalUser == null) {
+            SysNormalUser sameUsernameUser = sysNormalUserMapper.getByUsername(phone);
+            if (sameUsernameUser != null) {
+                throw new BaseException("该手机号账号不可用");
+            }
+            normalUser = createNormalUserByPhone(phone);
+        }
+        if (isDisabled(normalUser.getStatus())) {
+            log.info("普通用户手机验证码登录失败，账号被禁用，phone={}", phone);
+            throw new BaseException("普通用户账号已被禁用");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        sysNormalUserMapper.updateLastLoginTime(normalUser.getId(), now);
+        normalUser.setLastLoginTime(now);
+        PHONE_CODE_CACHE.remove(phone);
+        log.info("普通用户手机验证码登录成功，phone={}, username={}", phone, normalUser.getUsername());
         return buildNormalLoginVO(normalUser);
     }
 
@@ -217,8 +283,14 @@ public class UserServiceImpl implements UserService {
         // 重点：当前先做本地模拟实名，后续可在这里替换阿里云/腾讯云二要素核验。
         String idCardNo = IdentityUtil.normalizeIdCardNo(verifyDTO.getIdCardNo());
         if (!IdentityUtil.isValidIdCardNo(idCardNo)) {
-            sysNormalUserMapper.updateRealNameInfo(normalUser.getId(), 2, verifyDTO.getRealName().trim(), null, null, null);
+            sysNormalUserMapper.updateRealNameInfo(normalUser.getId(), 2, verifyDTO.getRealName().trim(), null, null, null, null, null);
             throw new BaseException("身份证号格式不正确");
+        }
+        Integer gender = IdentityUtil.resolveGender(idCardNo);
+        Integer age = IdentityUtil.resolveAge(idCardNo);
+        if (age == null) {
+            sysNormalUserMapper.updateRealNameInfo(normalUser.getId(), 2, verifyDTO.getRealName().trim(), null, null, null, null, null);
+            throw new BaseException("身份证出生日期不正确");
         }
         String idCardHash = IdentityUtil.hashIdCardNo(idCardNo);
         SysNormalUser existRealNameUser = sysNormalUserMapper.getByIdCardHash(idCardHash);
@@ -233,6 +305,8 @@ public class UserServiceImpl implements UserService {
                 verifyDTO.getRealName().trim(),
                 IdentityUtil.maskIdCardNo(idCardNo),
                 idCardHash,
+                gender,
+                age,
                 now);
         log.info("普通用户实名认证成功，userId={}", normalUser.getId());
         return buildNormalUserVO(requireNormalUser(normalUser.getId()));
@@ -273,6 +347,7 @@ public class UserServiceImpl implements UserService {
 
         SysNormalUser existUser = requireNormalUser(updateDTO.getId());
         checkNormalUsernameDuplicate(updateDTO.getUsername(), existUser.getId());
+        checkNormalPhoneDuplicate(updateDTO.getPhone(), existUser.getId());
 
         SysNormalUser normalUser = new SysNormalUser();
         normalUser.setId(updateDTO.getId());
@@ -349,6 +424,15 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    private void checkPhone(String phone) {
+        if (!StringUtils.hasText(phone)) {
+            throw new BaseException("手机号不能为空");
+        }
+        if (!PHONE_PATTERN.matcher(phone).matches()) {
+            throw new BaseException("手机号格式不正确");
+        }
+    }
+
     private void checkUserId(Long id, String errorMessage) {
         if (id == null) {
             throw new BaseException(errorMessage);
@@ -413,6 +497,18 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    private void checkNormalPhoneDuplicate(String phone, Long currentId) {
+        if (!StringUtils.hasText(phone)) {
+            return;
+        }
+        String normalizedPhone = normalizePhone(phone);
+        checkPhone(normalizedPhone);
+        SysNormalUser normalUser = sysNormalUserMapper.getByPhone(normalizedPhone);
+        if (normalUser != null && (currentId == null || !normalUser.getId().equals(currentId))) {
+            throw new BaseException("手机号已绑定其他普通用户账号");
+        }
+    }
+
     private void verifyAdminPassword(SysAdminUser adminUser, String rawPassword, String errorMessage) {
         if (PasswordUtil.isEncoded(adminUser.getPassword())) {
             if (!PasswordUtil.matches(rawPassword, adminUser.getPassword())) {
@@ -431,6 +527,9 @@ public class UserServiceImpl implements UserService {
     }
 
     private void verifyNormalUserPassword(SysNormalUser normalUser, String rawPassword, String errorMessage) {
+        if (!StringUtils.hasText(normalUser.getPassword())) {
+            throw new BaseException("当前账号未设置密码，请使用验证码登录或先设置密码");
+        }
         if (PasswordUtil.isEncoded(normalUser.getPassword())) {
             if (!PasswordUtil.matches(rawPassword, normalUser.getPassword())) {
                 log.info("普通用户密码校验失败，username={}", normalUser.getUsername());
@@ -475,6 +574,54 @@ public class UserServiceImpl implements UserService {
 
     private String defaultIfBlank(String value, String defaultValue) {
         return StringUtils.hasText(value) ? value : defaultValue;
+    }
+
+    private String normalizePhone(String phone) {
+        return StringUtils.hasText(phone) ? phone.trim() : phone;
+    }
+
+    private void verifyPhoneCode(String phone, String code) {
+        PhoneCodeCache cache = PHONE_CODE_CACHE.get(phone);
+        if (cache == null) {
+            throw new BaseException("请先获取验证码");
+        }
+        if (cache.isExpired()) {
+            PHONE_CODE_CACHE.remove(phone);
+            throw new BaseException("验证码已过期，请重新获取");
+        }
+        if (cache.isUsed()) {
+            throw new BaseException("验证码已使用，请重新获取");
+        }
+        if (!cache.code().equals(code)) {
+            throw new BaseException("验证码错误");
+        }
+        cache.markUsed();
+    }
+
+    private SysNormalUser createNormalUserByPhone(String phone) {
+        LocalDateTime now = LocalDateTime.now();
+        SysNormalUser normalUser = new SysNormalUser();
+        normalUser.setUsername(phone);
+        normalUser.setPassword(null);
+        normalUser.setNickname("用户" + randomNicknameSuffix());
+        normalUser.setPhone(phone);
+        normalUser.setStatus(1);
+        normalUser.setRealNameStatus(0);
+        normalUser.setDeleted(0);
+        normalUser.setLastLoginTime(now);
+        normalUser.setCreateTime(now);
+        normalUser.setUpdateTime(now);
+        sysNormalUserMapper.insert(normalUser);
+        log.info("手机验证码登录自动注册普通用户成功，phone={}", phone);
+        return normalUser;
+    }
+
+    private String randomNicknameSuffix() {
+        StringBuilder suffix = new StringBuilder(6);
+        for (int i = 0; i < 6; i++) {
+            suffix.append(NICKNAME_CHARS.charAt(SECURE_RANDOM.nextInt(NICKNAME_CHARS.length())));
+        }
+        return suffix.toString();
     }
 
     private SysAdminUser requireAdminUser(Long id) {
@@ -568,5 +715,33 @@ public class UserServiceImpl implements UserService {
                 .createTime(normalUser.getCreateTime())
                 .updateTime(normalUser.getUpdateTime())
                 .build();
+    }
+
+    private static class PhoneCodeCache {
+
+        private final String code;
+        private final LocalDateTime expireTime;
+        private boolean used;
+
+        private PhoneCodeCache(String code, LocalDateTime expireTime) {
+            this.code = code;
+            this.expireTime = expireTime;
+        }
+
+        private String code() {
+            return code;
+        }
+
+        private boolean isExpired() {
+            return expireTime == null || !expireTime.isAfter(LocalDateTime.now());
+        }
+
+        private boolean isUsed() {
+            return used;
+        }
+
+        private void markUsed() {
+            this.used = true;
+        }
     }
 }

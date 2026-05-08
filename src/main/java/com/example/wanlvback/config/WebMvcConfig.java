@@ -32,6 +32,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/user/admin/login",
                         "/user/normal/login",
                         "/user/normal/register",
+                        "/user/normal/code/send",
+                        "/user/normal/code/login",
                         "/reservation/agent/**",
                         "/reservation/spots/enabled",
                         "/reservation/slots",

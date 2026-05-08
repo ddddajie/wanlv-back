@@ -53,6 +53,33 @@
         limit 1
     </select>
 
+    <select id="getByPhone" resultMap="SysNormalUserResultMap">
+        select id,
+               username,
+               password,
+               nickname,
+               phone,
+               email,
+               avatar_url,
+               gender,
+               age,
+               interest_tags,
+               status,
+               real_name_status,
+               real_name,
+               id_card_masked,
+               id_card_hash,
+               real_name_time,
+               last_login_time,
+               deleted,
+               create_time,
+               update_time
+        from sys_normal_user
+        where phone = #{phone}
+          and deleted = 0
+        limit 1
+    </select>
+
     <select id="getById" resultMap="SysNormalUserResultMap">
         select id,
                username,
@@ -234,6 +261,12 @@
             real_name = #{realName},
             id_card_masked = #{idCardMasked},
             id_card_hash = #{idCardHash},
+            <if test="gender != null">
+                gender = #{gender},
+            </if>
+            <if test="age != null">
+                age = #{age},
+            </if>
             real_name_time = #{realNameTime},
             update_time = now()
         where id = #{id}

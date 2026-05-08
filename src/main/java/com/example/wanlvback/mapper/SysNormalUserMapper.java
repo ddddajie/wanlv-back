@@ -21,6 +21,14 @@ public interface SysNormalUserMapper {
     SysNormalUser getByUsername(@Param("username") String username);
 
     /**
+     * 根据手机号查询普通用户。
+     *
+     * @param phone 手机号
+     * @return 普通用户信息
+     */
+    SysNormalUser getByPhone(@Param("phone") String phone);
+
+    /**
      * 根据主键 ID 查询普通用户。
      *
      * @param id 用户主键 ID
@@ -71,6 +79,8 @@ public interface SysNormalUserMapper {
                            @Param("realName") String realName,
                            @Param("idCardMasked") String idCardMasked,
                            @Param("idCardHash") String idCardHash,
+                           @Param("gender") Integer gender,
+                           @Param("age") Integer age,
                            @Param("realNameTime") LocalDateTime realNameTime);
 
     /**

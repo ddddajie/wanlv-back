@@ -61,6 +61,8 @@ export interface UserLoginVO {
 | `POST` | `/user/admin/login` | 管理员登录 |
 | `POST` | `/user/normal/login` | 普通用户登录 |
 | `POST` | `/user/normal/register` | 普通用户注册 |
+| `POST` | `/user/normal/code/send` | 发送普通用户手机验证码 |
+| `POST` | `/user/normal/code/login` | 普通用户手机验证码登录/自动注册 |
 | `GET/POST` | `/user/init` | 初始化超级管理员 |
 | `GET/POST` | `/reservation/agent/**` | Agent 服务调用的预约工具接口 |
 | `GET` | `/reservation/spots/enabled` | 查询可预约景点 |

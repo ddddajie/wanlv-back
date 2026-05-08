@@ -88,7 +88,7 @@ http://127.0.0.1:8080
 - 初始化默认超级管理员。
 - 管理员登录。
 - 超级管理员新增管理员。
-- 普通用户注册与登录。
+- 普通用户账号密码注册/登录，以及手机号验证码登录/自动注册。
 - 管理员信息更新、详情查询、分页查询。
 - 普通用户信息更新、详情查询、分页查询。
 - 密码入库前会进行加密处理。
@@ -103,6 +103,8 @@ http://127.0.0.1:8080
 | POST | `/user/admin/add` | 新增管理员 |
 | POST | `/user/normal/register` | 普通用户注册 |
 | POST | `/user/normal/login` | 普通用户登录 |
+| POST | `/user/normal/code/send` | 发送普通用户手机验证码 |
+| POST | `/user/normal/code/login` | 普通用户手机验证码登录/自动注册 |
 | PUT | `/user/admin/update` | 更新管理员信息 |
 | PUT | `/user/normal/update` | 更新普通用户信息 |
 | GET | `/user/admin/{id}` | 查询管理员详情 |
@@ -351,6 +353,7 @@ wanlv:
 | --- | --- |
 | `docs/jwt-auth-api.md` | JWT 登录鉴权与前端接入文档 |
 | `docs/frontend-api.md` | 前端基础登录注册接口文档 |
+| `docs/phone-code-login-frontend-implementation.md` | 手机验证码登录前端实现参考 |
 | `docs/user-management-api.md` | 用户管理接口文档 |
 | `docs/map-api.md` | 地图业务接口联调文档 |
 | `docs/spot-reservation-api.md` | 景点预约接口联调文档 |

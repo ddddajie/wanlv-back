@@ -6,9 +6,12 @@ import com.example.wanlvback.pojo.dto.AdminUserUpdateDTO;
 import com.example.wanlvback.pojo.dto.NormalUserLoginDTO;
 import com.example.wanlvback.pojo.dto.NormalUserRegisterDTO;
 import com.example.wanlvback.pojo.dto.NormalUserUpdateDTO;
+import com.example.wanlvback.pojo.dto.PhoneCodeLoginDTO;
+import com.example.wanlvback.pojo.dto.PhoneCodeSendDTO;
 import com.example.wanlvback.pojo.dto.RealNameVerifyDTO;
 import com.example.wanlvback.pojo.vo.AdminUserVO;
 import com.example.wanlvback.pojo.vo.NormalUserVO;
+import com.example.wanlvback.pojo.vo.PhoneCodeSendVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
 import com.example.wanlvback.result.PageResult;
 
@@ -55,6 +58,22 @@ public interface UserService {
      * @return 登录结果
      */
     UserLoginVO normalLogin(NormalUserLoginDTO loginDTO);
+
+    /**
+     * 发送普通用户手机验证码。
+     *
+     * @param sendDTO 发送参数
+     * @return 验证码信息
+     */
+    PhoneCodeSendVO sendNormalUserPhoneCode(PhoneCodeSendDTO sendDTO);
+
+    /**
+     * 普通用户手机验证码登录。
+     *
+     * @param loginDTO 登录参数
+     * @return 登录结果
+     */
+    UserLoginVO normalPhoneCodeLogin(PhoneCodeLoginDTO loginDTO);
 
     NormalUserVO verifyNormalUserRealName(RealNameVerifyDTO verifyDTO);
 

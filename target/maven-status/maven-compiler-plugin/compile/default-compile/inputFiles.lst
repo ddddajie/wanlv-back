@@ -1,4 +1,5 @@
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\config\InternalApiProperties.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\config\JwtProperties.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\config\WebMvcConfig.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\constant\MessageConstant.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\context\BaseContext.java
@@ -11,6 +12,7 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\controller\UserDigit
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\exception\BaseException.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\handler\GlobalExceptionHandler.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\interceptor\InternalApiInterceptor.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\interceptor\JwtAuthenticationInterceptor.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\MapInteractionLogMapper.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\ScenicAreaMapper.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\mapper\ScenicGeoFeatureMapper.java
@@ -39,6 +41,8 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\MapInteract
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\NormalUserLoginDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\NormalUserRegisterDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\NormalUserUpdateDTO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\PhoneCodeLoginDTO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\PhoneCodeSendDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\RealNameVerifyDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\ReservationVisitorDTO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\dto\RouteGeoGenerateDTO.java
@@ -90,6 +94,7 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\MapInitVO.ja
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\MapInteractionLogVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\MapRouteVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\NormalUserVO.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\PhoneCodeSendVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\ReservationDashboardVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\ReservationEnabledSpotVO.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\pojo\vo\ReservationVisitorVO.java
@@ -129,7 +134,9 @@ D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\SpotReservat
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\UserDigitalProfileService.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\service\UserService.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\task\SessionAnalysisScheduleTask.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\task\SpotReservationExpireScheduleTask.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\utils\AgentChatHttpUtil.java
+D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\utils\AuthUtil.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\utils\IdentityUtil.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\utils\JwtUtil.java
 D:\idea\Code\wanlv-back\src\main\java\com\example\wanlvback\utils\PasswordUtil.java
