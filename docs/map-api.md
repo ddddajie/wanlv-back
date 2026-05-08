@@ -22,7 +22,7 @@
 - 接口前缀：`/map`
 - 请求格式：`application/json`
 - 响应格式：`application/json`
-- 当前阶段未接入统一登录态校验，管理接口和前台读接口都可直接访问
+- 当前已接入 JWT 登录态校验；公开读接口和 Agent 工具白名单以 `docs/jwt-auth-api.md` 为准，管理类接口需要管理员 token
 - 前端仍然必须优先根据响应体中的 `code` 判断成功或失败
 
 统一响应结构：

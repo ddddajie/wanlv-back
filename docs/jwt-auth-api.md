@@ -60,7 +60,7 @@ export interface UserLoginVO {
 | --- | --- | --- |
 | `POST` | `/user/admin/login` | 管理员登录 |
 | `POST` | `/user/normal/login` | 普通用户登录 |
-| `POST` | `/user/normal/register` | 普通用户注册 |
+| `POST` | `/user/normal/register` | 普通用户注册（当前代码中已停用，优先使用手机验证码登录自动注册） |
 | `POST` | `/user/normal/code/send` | 发送普通用户手机验证码 |
 | `POST` | `/user/normal/code/login` | 普通用户手机验证码登录/自动注册 |
 | `GET/POST` | `/user/init` | 初始化超级管理员 |

@@ -101,7 +101,7 @@ http://127.0.0.1:8080
 | GET/POST | `/user/init` | 初始化超级管理员 |
 | POST | `/user/admin/login` | 管理员登录 |
 | POST | `/user/admin/add` | 新增管理员 |
-| POST | `/user/normal/register` | 普通用户注册 |
+| POST | `/user/normal/register` | 普通用户注册（当前已停用，优先使用手机验证码登录自动注册） |
 | POST | `/user/normal/login` | 普通用户登录 |
 | POST | `/user/normal/code/send` | 发送普通用户手机验证码 |
 | POST | `/user/normal/code/login` | 普通用户手机验证码登录/自动注册 |
@@ -130,7 +130,7 @@ http://127.0.0.1:8080
 - 旅游路线管理。
 - 路线几何数据管理。
 - 根据路线景点和道路空间要素自动生成路线轨迹。
-- Agent 根据景区名和有序景点名生成定制路线轨迹，不落库，由前端缓存。
+- Agent 根据景区名和有序景点名生成定制路线轨迹，并保存为用户最新专属路线。
 - 景区边界、道路、区域等空间要素管理。
 - 地图初始化数据聚合返回。
 - 景点详情和路线详情查询。
@@ -157,7 +157,7 @@ http://127.0.0.1:8080
 | DELETE | `/map/routes/{id}` | 删除路线 |
 | POST | `/map/route-geos` | 新增路线几何 |
 | POST | `/map/routes/{routeId}/geo/generate` | 自动生成路线轨迹 |
-| POST | `/map/agent/routes/geo/generate` | Agent 按景区名和景点名生成定制路线轨迹，不落库 |
+| POST | `/map/agent/routes/geo/generate` | Agent 按景区名和景点名生成定制路线轨迹 |
 | PUT | `/map/route-geos` | 更新路线几何 |
 | GET | `/map/route-geos/route/{routeId}` | 查询路线几何版本列表 |
 | POST | `/map/geo-features` | 新增空间要素 |
@@ -269,7 +269,7 @@ Agent 聊天模块负责接收前端问题，维护本地会话和消息记录�
 | POST | `/agent/session-analysis` | 单个用户日报总结 |
 | POST | `/agent/session-analysis/daily` | 按日期批量日报总结 |
 
-注意：日报相关接口当前通过请求体中的超级管理员账号密码进行权限校验。
+注意：日报相关接口当前需要超级管理员权限，具体鉴权规则以 `docs/jwt-auth-api.md` 和 Controller 实现为准。
 
 定时任务配置：
 
@@ -354,6 +354,7 @@ wanlv:
 
 | 文档 | 内容 |
 | --- | --- |
+| `docs/README.md` | 接口文档总览、阅读顺序和当前接口路由总表 |
 | `docs/jwt-auth-api.md` | JWT 登录鉴权与前端接入文档 |
 | `docs/frontend-api.md` | 前端基础登录注册接口文档 |
 | `docs/phone-code-login-frontend-implementation.md` | 手机验证码登录前端实现参考 |

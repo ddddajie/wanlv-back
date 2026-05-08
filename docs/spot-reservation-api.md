@@ -11,7 +11,7 @@
 7. 管理端生成和维护预约时段
 8. 管理端查询预约订单
 
-Agent 专属工具接口本阶段暂不单独实现；订单创建接口保留 `sourceType = AGENT`、`agentSessionCode`、`clientRequestId` 字段，后续 Agent 可复用同一个下单接口。
+当前已提供 `/reservation/agent/**` Agent 专属工具接口；普通用户下单仍使用 `/reservation/orders`，Agent 下单使用 `/reservation/agent/orders`，后端会区分 `sourceType`、`agentSessionCode`、`clientRequestId` 等字段。
 
 ---
 
@@ -19,11 +19,11 @@ Agent 专属工具接口本阶段暂不单独实现；订单创建接口保留 `
 
 - 项目名称：`wanlv-back`
 - 本地默认地址：`http://127.0.0.1:8080`
-- 用户端接口前缀：`/api/reservation`
-- 管理端接口前缀：`/api/admin/reservation`
+- 用户端接口前缀：`/reservation`
+- 管理端接口前缀：`/reservation/admin`
 - 请求格式：`application/json`
 - 响应格式：`application/json`
-- 当前阶段未接入统一登录态校验，接口直接传 `userId`
+- 当前已接入 JWT 登录态校验；用户端涉及 `userId` 的接口会校验当前 token，免登录白名单以 `docs/jwt-auth-api.md` 为准
 - 前端必须优先根据响应体中的 `code` 判断成功或失败
 
 统一响应结构：
@@ -97,7 +97,7 @@ Agent 专属工具接口本阶段暂不单独实现；订单创建接口保留 `
 ### 3.1 查询支持预约的景点
 
 ```http
-GET /api/reservation/spots/enabled
+GET /reservation/spots/enabled
 ```
 
 查询参数：
@@ -133,7 +133,7 @@ GET /api/reservation/spots/enabled
 ### 3.2 查询景点可预约时段
 
 ```http
-GET /api/reservation/slots
+GET /reservation/slots
 ```
 
 查询参数：
@@ -190,7 +190,7 @@ GET /api/reservation/slots
 ### 3.3 创建预约订单
 
 ```http
-POST /api/reservation/orders
+POST /reservation/orders
 ```
 
 请求体：
@@ -267,7 +267,7 @@ POST /api/reservation/orders
 ### 3.4 查询我的预约
 
 ```http
-GET /api/reservation/orders/my
+GET /reservation/orders/my
 ```
 
 查询参数：
@@ -318,7 +318,7 @@ GET /api/reservation/orders/my
 ### 3.5 取消预约
 
 ```http
-POST /api/reservation/orders/{reservationNo}/cancel
+POST /reservation/orders/{reservationNo}/cancel
 ```
 
 路径参数：
@@ -359,7 +359,7 @@ POST /api/reservation/orders/{reservationNo}/cancel
 ### 4.1 创建预约规则
 
 ```http
-POST /api/admin/reservation/rules
+POST /reservation/admin/rules
 ```
 
 请求体：
@@ -403,7 +403,7 @@ POST /api/admin/reservation/rules
 ### 4.2 修改预约规则
 
 ```http
-PUT /api/admin/reservation/rules/{id}
+PUT /reservation/admin/rules/{id}
 ```
 
 请求体：
@@ -431,7 +431,7 @@ PUT /api/admin/reservation/rules/{id}
 ### 4.3 启用或停用预约规则
 
 ```http
-PUT /api/admin/reservation/rules/{id}/status
+PUT /reservation/admin/rules/{id}/status
 ```
 
 请求体：
@@ -458,7 +458,7 @@ PUT /api/admin/reservation/rules/{id}/status
 ### 4.4 查询预约规则列表
 
 ```http
-GET /api/admin/reservation/rules
+GET /reservation/admin/rules
 ```
 
 查询参数：
@@ -478,7 +478,7 @@ GET /api/admin/reservation/rules
 ### 4.5 手动生成预约时段
 
 ```http
-POST /api/admin/reservation/slots/generate
+POST /reservation/admin/slots/generate
 ```
 
 请求体：
@@ -522,7 +522,7 @@ POST /api/admin/reservation/slots/generate
 ### 4.6 新增临时预约时段
 
 ```http
-POST /api/admin/reservation/slots
+POST /reservation/admin/slots
 ```
 
 请求体：
@@ -547,7 +547,7 @@ POST /api/admin/reservation/slots
 ### 4.7 修改预约时段
 
 ```http
-PUT /api/admin/reservation/slots/{id}
+PUT /reservation/admin/slots/{id}
 ```
 
 请求体：
@@ -571,7 +571,7 @@ PUT /api/admin/reservation/slots/{id}
 ### 4.8 查询预约时段列表
 
 ```http
-GET /api/admin/reservation/slots
+GET /reservation/admin/slots
 ```
 
 查询参数：
@@ -594,7 +594,7 @@ GET /api/admin/reservation/slots
 ### 4.9 查询预约订单列表
 
 ```http
-GET /api/admin/reservation/orders
+GET /reservation/admin/orders
 ```
 
 查询参数：
@@ -700,14 +700,14 @@ export function listReservationEnabledSpots(params?: {
   scenicAreaId?: number
   keyword?: string
 }) {
-  return request.get('/api/reservation/spots/enabled', { params })
+  return request.get('/reservation/spots/enabled', { params })
 }
 
 export function listReservationSlots(params: {
   spotId: number
   visitDate: string
 }) {
-  return request.get('/api/reservation/slots', { params })
+  return request.get('/reservation/slots', { params })
 }
 
 export function createReservationOrder(data: {
@@ -720,7 +720,7 @@ export function createReservationOrder(data: {
   clientRequestId?: string
   remark?: string
 }) {
-  return request.post('/api/reservation/orders', data)
+  return request.post('/reservation/orders', data)
 }
 
 export function pageMyReservationOrders(params: {
@@ -729,14 +729,14 @@ export function pageMyReservationOrders(params: {
   pageNum?: number
   pageSize?: number
 }) {
-  return request.get('/api/reservation/orders/my', { params })
+  return request.get('/reservation/orders/my', { params })
 }
 
 export function cancelReservationOrder(
   reservationNo: string,
   data: { userId: number; cancelReason?: string },
 ) {
-  return request.post(`/api/reservation/orders/${reservationNo}/cancel`, data)
+  return request.post(`/reservation/orders/${reservationNo}/cancel`, data)
 }
 ```
 
