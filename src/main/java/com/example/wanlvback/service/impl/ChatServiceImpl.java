@@ -4,14 +4,12 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
 import com.example.wanlvback.constant.MessageConstant;
 import com.example.wanlvback.exception.BaseException;
-import com.example.wanlvback.mapper.SysAdminUserMapper;
 import com.example.wanlvback.mapper.SysNormalUserMapper;
 import com.example.wanlvback.mapper.VisitorMessageMapper;
 import com.example.wanlvback.mapper.VisitorSessionMapper;
 import com.example.wanlvback.pojo.dto.ChatAskDTO;
 import com.example.wanlvback.pojo.dto.SessionAnalysisTriggerDTO;
 import com.example.wanlvback.pojo.dto.SessionScenicAreaBindDTO;
-import com.example.wanlvback.pojo.entity.SysAdminUser;
 import com.example.wanlvback.pojo.entity.SysNormalUser;
 import com.example.wanlvback.pojo.entity.VisitorMessage;
 import com.example.wanlvback.pojo.entity.VisitorSession;
@@ -24,7 +22,7 @@ import com.example.wanlvback.pojo.vo.SessionAnalysisBatchVO;
 import com.example.wanlvback.service.ChatService;
 import com.example.wanlvback.service.UserDigitalProfileService;
 import com.example.wanlvback.utils.AgentChatHttpUtil;
-import com.example.wanlvback.utils.PasswordUtil;
+import com.example.wanlvback.utils.AuthUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -51,8 +49,6 @@ public class ChatServiceImpl implements ChatService {
     private static final String SESSION_STATUS_ANALYZED = "ANALYZED";
     private static final String SCENIC_AREA_SOURCE_UNSET = "UNSET";
     private static final String SCENIC_AREA_SOURCE_FRONTEND = "FRONTEND";
-    private static final String SUPER_ADMIN_ROLE = "super_admin";
-
     /**
      * 业务会话编码格式：session_yyyyMMdd_userId。
      */
@@ -66,9 +62,6 @@ public class ChatServiceImpl implements ChatService {
 
     @Autowired
     private SysNormalUserMapper sysNormalUserMapper;
-
-    @Autowired
-    private SysAdminUserMapper sysAdminUserMapper;
 
     @Autowired
     private AgentChatHttpUtil agentChatHttpUtil;
@@ -358,53 +351,7 @@ public class ChatServiceImpl implements ChatService {
         if (triggerDTO == null) {
             throw new BaseException(MessageConstant.REQUEST_EMPTY);
         }
-        validateSuperAdmin(triggerDTO.getOperatorUsername(), triggerDTO.getOperatorPassword());
-    }
-
-    /**
-     * 校验调用方是否为超级管理员。
-     */
-    private void validateSuperAdmin(String username, String password) {
-        if (!StringUtils.hasText(username) || !StringUtils.hasText(password)) {
-            throw new BaseException(MessageConstant.SUPER_ADMIN_CREDENTIAL_REQUIRED);
-        }
-
-        SysAdminUser adminUser = sysAdminUserMapper.getByUsername(username);
-        if (adminUser == null || isDeleted(adminUser.getDeleted())) {
-            throw new BaseException(MessageConstant.SUPER_ADMIN_NOT_FOUND);
-        }
-        if (isDisabled(adminUser.getStatus())) {
-            throw new BaseException(MessageConstant.SUPER_ADMIN_DISABLED);
-        }
-        if (!SUPER_ADMIN_ROLE.equals(adminUser.getRole())) {
-            throw new BaseException(MessageConstant.SUPER_ADMIN_ONLY);
-        }
-
-        if (PasswordUtil.isEncoded(adminUser.getPassword())) {
-            if (!PasswordUtil.matches(password, adminUser.getPassword())) {
-                throw new BaseException(MessageConstant.SUPER_ADMIN_AUTH_FAIL);
-            }
-            return;
-        }
-
-        if (!password.equals(adminUser.getPassword())) {
-            throw new BaseException(MessageConstant.SUPER_ADMIN_AUTH_FAIL);
-        }
-
-        /*
-         * 兼容旧数据中的明文密码。
-         * 校验通过后自动升级成加密存储，避免后续继续使用明文。
-         */
-        String encodedPassword = PasswordUtil.encode(password);
-        sysAdminUserMapper.updatePasswordById(adminUser.getId(), encodedPassword);
-    }
-
-    private boolean isDeleted(Integer deleted) {
-        return deleted != null && deleted == 1;
-    }
-
-    private boolean isDisabled(Integer status) {
-        return status != null && status == 0;
+        AuthUtil.requireSuperAdmin();
     }
 
     /**

@@ -1098,11 +1098,16 @@ public class SpotReservationServiceImpl implements SpotReservationService {
     }
 
     private void validateMinAdvanceTime(ScenicSpot spot, SpotReservationSlot slot) {
-        int minAdvanceMinutes = defaultNumber(spot.getMinAdvanceMinutes(), 30);
-        LocalDateTime earliest = LocalDateTime.now().plusMinutes(minAdvanceMinutes);
-        if (LocalDateTime.of(slot.getVisitDate(), slot.getStartTime()).isBefore(earliest)) {
+        if (!isWithinReservationDeadline(spot, slot, LocalDateTime.now())) {
             throw new BaseException("当前时段不满足最少提前预约时间");
         }
+    }
+
+    private boolean isWithinReservationDeadline(ScenicSpot spot, SpotReservationSlot slot, LocalDateTime now) {
+        int minAdvanceMinutes = defaultNumber(spot.getMinAdvanceMinutes(), 30);
+        LocalDateTime reservationDeadline = LocalDateTime.of(slot.getVisitDate(), slot.getEndTime()).minusMinutes(minAdvanceMinutes);
+        // 当天预约允许在时段开始后提交，只要没有超过结束时间扣除最少提前分钟数的截止点。
+        return !reservationDeadline.isBefore(now);
     }
 
     private boolean matchesWeekDays(String weekDays, LocalDate visitDate) {
@@ -1136,7 +1141,11 @@ public class SpotReservationServiceImpl implements SpotReservationService {
         int reservedCount = defaultNumber(slot.getReservedCount(), 0);
         boolean available = Integer.valueOf(1).equals(slot.getStatus()) && reservedCount < totalCapacity;
         if (checkReservationRule && spot != null) {
-            available = available && !slot.getVisitDate().isBefore(LocalDate.now()) && !slot.getVisitDate().isAfter(LocalDate.now().plusDays(defaultNumber(spot.getAdvanceReservationDays(), 7))) && !LocalDateTime.of(slot.getVisitDate(), slot.getStartTime()).isBefore(LocalDateTime.now().plusMinutes(defaultNumber(spot.getMinAdvanceMinutes(), 30)));
+            LocalDate today = LocalDate.now();
+            available = available
+                    && !slot.getVisitDate().isBefore(today)
+                    && !slot.getVisitDate().isAfter(today.plusDays(defaultNumber(spot.getAdvanceReservationDays(), 7)))
+                    && isWithinReservationDeadline(spot, slot, LocalDateTime.now());
         }
         return SpotReservationSlotVO.builder().id(slot.getId()).slotId(slot.getId()).scenicAreaId(slot.getScenicAreaId()).scenicName(area == null ? null : area.getScenicName()).spotId(slot.getSpotId()).spotName(spot == null ? null : spot.getSpotName()).ruleId(slot.getRuleId()).visitDate(slot.getVisitDate()).startTime(slot.getStartTime()).endTime(slot.getEndTime()).totalCapacity(totalCapacity).reservedCount(reservedCount).remainingCount(Math.max(totalCapacity - reservedCount, 0)).available(available).status(slot.getStatus()).remark(slot.getRemark()).createTime(slot.getCreateTime()).updateTime(slot.getUpdateTime()).build();
     }

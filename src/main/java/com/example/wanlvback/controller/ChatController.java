@@ -8,6 +8,7 @@ import com.example.wanlvback.pojo.vo.ChatAnswerVO;
 import com.example.wanlvback.pojo.vo.SessionAnalysisBatchVO;
 import com.example.wanlvback.result.Result;
 import com.example.wanlvback.service.ChatService;
+import com.example.wanlvback.utils.AuthUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +32,7 @@ public class ChatController {
      */
     @PostMapping("/chat")
     public Result<ChatAnswerVO> chat(@RequestBody ChatAskDTO chatAskDTO) {
+        AuthUtil.requireSelf(chatAskDTO == null ? null : chatAskDTO.getUserId());
         log.info("收到 Agent 聊天请求，userId={}", chatAskDTO.getUserId());
         return Result.success(chatService.ask(chatAskDTO));
     }
@@ -41,6 +43,7 @@ public class ChatController {
      */
     @PostMapping("/session-analysis")
     public Result<AgentSessionAnalysisVO> analyzeSession(@RequestBody SessionAnalysisTriggerDTO triggerDTO) {
+        AuthUtil.requireSuperAdmin();
         log.info("收到单会话日报总结请求，operator={}, userId={}, reportDate={}",
                 triggerDTO == null ? null : triggerDTO.getOperatorUsername(),
                 triggerDTO == null ? null : triggerDTO.getUserId(),
@@ -54,6 +57,7 @@ public class ChatController {
      */
     @PostMapping("/session-analysis/daily")
     public Result<SessionAnalysisBatchVO> analyzeDailySessions(@RequestBody SessionAnalysisTriggerDTO triggerDTO) {
+        AuthUtil.requireSuperAdmin();
         log.info("收到日报批量总结请求，operator={}, reportDate={}, forceReanalyze={}",
                 triggerDTO == null ? null : triggerDTO.getOperatorUsername(),
                 triggerDTO == null ? null : triggerDTO.getReportDate(),
@@ -66,6 +70,7 @@ public class ChatController {
      */
     @PostMapping("/session/scenic-area/bind")
     public Result<Long> bindScenicArea(@RequestBody SessionScenicAreaBindDTO bindDTO) {
+        AuthUtil.requireSelf(bindDTO == null ? null : bindDTO.getUserId());
         log.info("收到景区绑定请求，userId={}, scenicAreaId={}", bindDTO.getUserId(), bindDTO.getScenicAreaId());
         return Result.success(chatService.bindScenicArea(bindDTO));
     }

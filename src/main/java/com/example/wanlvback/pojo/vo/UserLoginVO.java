@@ -27,5 +27,7 @@ public class UserLoginVO implements Serializable {
 
     private Integer realNameStatus; // 实名状态：0未实名，1已实名，2实名失败
 
+    private String token; // JWT 登录凭证
+
     private LocalDateTime lastLoginTime; // 最后登录时间
 }

@@ -349,6 +349,7 @@ wanlv:
 
 | 文档 | 内容 |
 | --- | --- |
+| `docs/jwt-auth-api.md` | JWT 登录鉴权与前端接入文档 |
 | `docs/frontend-api.md` | 前端基础登录注册接口文档 |
 | `docs/user-management-api.md` | 用户管理接口文档 |
 | `docs/map-api.md` | 地图业务接口联调文档 |

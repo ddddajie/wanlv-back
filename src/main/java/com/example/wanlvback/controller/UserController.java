@@ -12,6 +12,7 @@ import com.example.wanlvback.pojo.vo.NormalUserVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
 import com.example.wanlvback.result.Result;
 import com.example.wanlvback.service.UserService;
+import com.example.wanlvback.utils.AuthUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -59,6 +60,7 @@ public class UserController {
      */
     @PostMapping("/admin/add")
     public Result<UserLoginVO> createAdmin(@RequestBody AdminCreateDTO adminCreateDTO) {
+        AuthUtil.requireSuperAdmin();
         log.info("收到新增管理员请求，operator={}, target={}",
                 adminCreateDTO.getOperatorUsername(), adminCreateDTO.getUsername());
         return Result.success(userService.createAdmin(adminCreateDTO));
@@ -87,6 +89,7 @@ public class UserController {
      */
     @PostMapping("/normal/real-name/verify")
     public Result<NormalUserVO> verifyNormalUserRealName(@RequestBody RealNameVerifyDTO verifyDTO) {
+        AuthUtil.requireSelf(verifyDTO == null ? null : verifyDTO.getUserId());
         log.info("收到普通用户实名认证请求，userId={}", verifyDTO == null ? null : verifyDTO.getUserId());
         return Result.success(userService.verifyNormalUserRealName(verifyDTO));
     }
@@ -96,6 +99,7 @@ public class UserController {
      */
     @PutMapping("/admin/update")
     public Result<AdminUserVO> updateAdminUser(@RequestBody AdminUserUpdateDTO updateDTO) {
+        AuthUtil.requireAdmin();
         log.info("收到管理员信息更新请求，id={}", updateDTO.getId());
         return Result.success(userService.updateAdminUser(updateDTO));
     }
@@ -105,6 +109,7 @@ public class UserController {
      */
     @PutMapping("/normal/update")
     public Result<NormalUserVO> updateNormalUser(@RequestBody NormalUserUpdateDTO updateDTO) {
+        AuthUtil.requireSelfOrAdmin(updateDTO == null ? null : updateDTO.getId());
         log.info("收到普通用户信息更新请求，id={}", updateDTO.getId());
         return Result.success(userService.updateNormalUser(updateDTO));
     }
@@ -114,6 +119,7 @@ public class UserController {
      */
     @GetMapping("/admin/{id}")
     public Result<AdminUserVO> getAdminUser(@PathVariable("id") Long id) {
+        AuthUtil.requireAdmin();
         log.info("收到管理员详情查询请求，id={}", id);
         return Result.success(userService.getAdminUserById(id));
     }
@@ -123,6 +129,7 @@ public class UserController {
      */
     @DeleteMapping("/admin/{id}")
     public Result<Void> deleteAdminUser(@PathVariable("id") Long id) {
+        AuthUtil.requireSuperAdmin();
         log.info("收到管理员删除请求，id={}", id);
         userService.deleteAdminUser(id);
         return Result.success();
@@ -133,6 +140,7 @@ public class UserController {
      */
     @GetMapping("/normal/{id}")
     public Result<NormalUserVO> getNormalUser(@PathVariable("id") Long id) {
+        AuthUtil.requireSelfOrAdmin(id);
         log.info("收到普通用户详情查询请求，id={}", id);
         return Result.success(userService.getNormalUserById(id));
     }
@@ -142,6 +150,7 @@ public class UserController {
      */
     @DeleteMapping("/normal/{id}")
     public Result<Void> deleteNormalUser(@PathVariable("id") Long id) {
+        AuthUtil.requireAdmin();
         log.info("收到普通用户删除请求，id={}", id);
         userService.deleteNormalUser(id);
         return Result.success();
@@ -153,6 +162,7 @@ public class UserController {
     @GetMapping("/admin/page")
     public Result<PageResult> pageAdminUsers(@RequestParam(defaultValue = "1") Integer pageNum,
                                              @RequestParam(defaultValue = "10") Integer pageSize) {
+        AuthUtil.requireAdmin();
         log.info("收到管理员分页查询请求，pageNum={}, pageSize={}", pageNum, pageSize);
         return Result.success(userService.pageAdminUsers(pageNum, pageSize));
     }
@@ -163,6 +173,7 @@ public class UserController {
     @GetMapping("/normal/page")
     public Result<PageResult> pageNormalUsers(@RequestParam(defaultValue = "1") Integer pageNum,
                                               @RequestParam(defaultValue = "10") Integer pageSize) {
+        AuthUtil.requireAdmin();
         log.info("收到普通用户分页查询请求，pageNum={}, pageSize={}", pageNum, pageSize);
         return Result.success(userService.pageNormalUsers(pageNum, pageSize));
     }

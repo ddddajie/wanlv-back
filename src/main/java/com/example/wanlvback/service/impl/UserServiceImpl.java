@@ -1,5 +1,6 @@
 package com.example.wanlvback.service.impl;
 
+import com.example.wanlvback.config.JwtProperties;
 import com.example.wanlvback.exception.BaseException;
 import com.example.wanlvback.mapper.SysAdminUserMapper;
 import com.example.wanlvback.mapper.SysNormalUserMapper;
@@ -17,7 +18,9 @@ import com.example.wanlvback.pojo.vo.NormalUserVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
 import com.example.wanlvback.result.PageResult;
 import com.example.wanlvback.service.UserService;
+import com.example.wanlvback.utils.AuthUtil;
 import com.example.wanlvback.utils.IdentityUtil;
+import com.example.wanlvback.utils.JwtUtil;
 import com.example.wanlvback.utils.PasswordUtil;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
@@ -28,7 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -43,6 +48,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private SysNormalUserMapper sysNormalUserMapper;
+
+    @Autowired
+    private JwtProperties jwtProperties;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -102,27 +110,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UserLoginVO createAdmin(AdminCreateDTO adminCreateDTO) {
-        checkLoginParam(adminCreateDTO.getOperatorUsername(), adminCreateDTO.getOperatorPassword(), "操作人账号或密码不能为空");
+        AuthUtil.requireSuperAdmin();
         checkLoginParam(adminCreateDTO.getUsername(), adminCreateDTO.getPassword(), "新管理员账号或密码不能为空");
         log.info("收到新增管理员请求，operator={}, target={}",
-                adminCreateDTO.getOperatorUsername(), adminCreateDTO.getUsername());
-
-        SysAdminUser operator = sysAdminUserMapper.getByUsername(adminCreateDTO.getOperatorUsername());
-        if (operator == null || isDeleted(operator.getDeleted())) {
-            log.info("新增管理员失败，操作人不存在，operator={}", adminCreateDTO.getOperatorUsername());
-            throw new BaseException("操作人不存在");
-        }
-        if (isDisabled(operator.getStatus())) {
-            log.info("新增管理员失败，操作人已被禁用，operator={}", adminCreateDTO.getOperatorUsername());
-            throw new BaseException("操作人已被禁用");
-        }
-
-        verifyAdminPassword(operator, adminCreateDTO.getOperatorPassword(), "操作人账号或密码错误");
-
-        if (!"super_admin".equals(operator.getRole())) {
-            log.info("新增管理员失败，操作人不是超级管理员，operator={}", adminCreateDTO.getOperatorUsername());
-            throw new BaseException("只有超级管理员才能新增管理员");
-        }
+                AuthUtil.getCurrentUserId(), adminCreateDTO.getUsername());
 
         SysAdminUser existAdmin = sysAdminUserMapper.getByUsername(adminCreateDTO.getUsername());
         if (existAdmin != null && !isDeleted(existAdmin.getDeleted())) {
@@ -511,6 +502,7 @@ public class UserServiceImpl implements UserService {
                 .role(adminUser.getRole())
                 .status(adminUser.getStatus())
                 .realNameStatus(null)
+                .token(createToken(adminUser.getId(), adminUser.getUsername(), "admin", adminUser.getRole()))
                 .lastLoginTime(adminUser.getLastLoginTime())
                 .build();
     }
@@ -524,8 +516,18 @@ public class UserServiceImpl implements UserService {
                 .role("normal_user")
                 .status(normalUser.getStatus())
                 .realNameStatus(normalUser.getRealNameStatus())
+                .token(createToken(normalUser.getId(), normalUser.getUsername(), "normal", "normal_user"))
                 .lastLoginTime(normalUser.getLastLoginTime())
                 .build();
+    }
+
+    private String createToken(Long userId, String username, String userType, String role) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userId);
+        claims.put("username", username);
+        claims.put("userType", userType);
+        claims.put("role", role);
+        return JwtUtil.createJWT(jwtProperties.getSecretKey(), jwtProperties.getTtlMs(), claims);
     }
 
     private AdminUserVO buildAdminUserVO(SysAdminUser adminUser) {

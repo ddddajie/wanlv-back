@@ -24,6 +24,7 @@ import com.example.wanlvback.pojo.vo.SpotReservationSlotsQueryVO;
 import com.example.wanlvback.result.PageResult;
 import com.example.wanlvback.result.Result;
 import com.example.wanlvback.service.SpotReservationService;
+import com.example.wanlvback.utils.AuthUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -52,6 +53,7 @@ public class SpotReservationController {
      */
     @PostMapping("/admin/rules")
     public Result<SpotReservationRuleVO> createRule(@RequestBody SpotReservationRuleCreateDTO dto) {
+        AuthUtil.requireAdmin();
         log.info("收到预约规则新增请求，spotId={}", dto == null ? null : dto.getSpotId());
         return Result.success(spotReservationService.createRule(dto));
     }
@@ -62,6 +64,7 @@ public class SpotReservationController {
     @PutMapping("/admin/rules/{id}")
     public Result<SpotReservationRuleVO> updateRule(@PathVariable Long id,
                                                     @RequestBody SpotReservationRuleUpdateDTO dto) {
+        AuthUtil.requireAdmin();
         log.info("收到预约规则更新请求，id={}", id);
         return Result.success(spotReservationService.updateRule(id, dto));
     }
@@ -72,6 +75,7 @@ public class SpotReservationController {
     @PutMapping("/admin/rules/{id}/status")
     public Result<Boolean> updateRuleStatus(@PathVariable Long id,
                                             @RequestBody SpotReservationRuleStatusDTO dto) {
+        AuthUtil.requireAdmin();
         log.info("收到预约规则状态更新请求，id={}, status={}", id, dto == null ? null : dto.getStatus());
         return Result.success(spotReservationService.updateRuleStatus(id, dto));
     }
@@ -85,6 +89,7 @@ public class SpotReservationController {
                                         @RequestParam(required = false) Long scenicAreaId,
                                         @RequestParam(required = false) Long spotId,
                                         @RequestParam(required = false) Integer status) {
+        AuthUtil.requireAdmin();
         log.info("收到预约规则分页查询请求，pageNum={}, pageSize={}, scenicAreaId={}, spotId={}, status={}",
                 pageNum, pageSize, scenicAreaId, spotId, status);
         return Result.success(spotReservationService.pageRules(pageNum, pageSize, scenicAreaId, spotId, status));
@@ -95,6 +100,7 @@ public class SpotReservationController {
      */
     @PostMapping("/admin/slots/generate")
     public Result<SpotReservationGenerateVO> generateSlots(@RequestBody(required = false) SpotReservationSlotGenerateDTO dto) {
+        AuthUtil.requireAdmin();
         log.info("收到预约时段生成请求，scenicAreaId={}, spotId={}",
                 dto == null ? null : dto.getScenicAreaId(), dto == null ? null : dto.getSpotId());
         return Result.success(spotReservationService.generateSlots(dto));
@@ -105,6 +111,7 @@ public class SpotReservationController {
      */
     @PostMapping("/admin/slots")
     public Result<SpotReservationSlotVO> createSlot(@RequestBody SpotReservationSlotCreateDTO dto) {
+        AuthUtil.requireAdmin();
         log.info("收到预约时段新增请求，spotId={}, visitDate={}",
                 dto == null ? null : dto.getSpotId(), dto == null ? null : dto.getVisitDate());
         return Result.success(spotReservationService.createSlot(dto));
@@ -116,6 +123,7 @@ public class SpotReservationController {
     @PutMapping("/admin/slots/{id}")
     public Result<SpotReservationSlotVO> updateSlot(@PathVariable Long id,
                                                     @RequestBody SpotReservationSlotUpdateDTO dto) {
+        AuthUtil.requireAdmin();
         log.info("收到预约时段更新请求，id={}", id);
         return Result.success(spotReservationService.updateSlot(id, dto));
     }
@@ -132,6 +140,7 @@ public class SpotReservationController {
                                         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
                                         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
                                         @RequestParam(required = false) Integer status) {
+        AuthUtil.requireAdmin();
         log.info("收到预约时段分页查询请求，pageNum={}, pageSize={}, scenicAreaId={}, spotId={}, visitDate={}, startDate={}, endDate={}, status={}",
                 pageNum, pageSize, scenicAreaId, spotId, visitDate, startDate, endDate, status);
         return Result.success(spotReservationService.pageSlots(pageNum, pageSize, scenicAreaId, spotId,
@@ -151,6 +160,7 @@ public class SpotReservationController {
                                          @RequestParam(required = false) String status,
                                          @RequestParam(required = false) String sourceType,
                                          @RequestParam(required = false) String reservationNo) {
+        AuthUtil.requireAdmin();
         log.info("收到预约订单分页查询请求，pageNum={}, pageSize={}, scenicAreaId={}, spotId={}, userId={}, visitDate={}, status={}, sourceType={}, reservationNo={}",
                 pageNum, pageSize, scenicAreaId, spotId, userId, visitDate, status, sourceType, reservationNo);
         return Result.success(spotReservationService.pageOrders(pageNum, pageSize, scenicAreaId, spotId, userId,
@@ -162,6 +172,7 @@ public class SpotReservationController {
      */
     @PostMapping("/admin/orders/{reservationNo}/enter")
     public Result<Boolean> enterOrder(@PathVariable String reservationNo) {
+        AuthUtil.requireAdmin();
         log.info("收到预约订单检票入场请求，reservationNo={}", reservationNo);
         return Result.success(spotReservationService.enterOrder(reservationNo));
     }
@@ -172,6 +183,7 @@ public class SpotReservationController {
     @GetMapping("/admin/dashboard")
     public Result<ReservationDashboardVO> getAdminDashboard(@RequestParam(required = false) Long scenicAreaId,
                                                            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
+        AuthUtil.requireAdmin();
         log.info("收到预约运营看板查询请求，scenicAreaId={}, date={}", scenicAreaId, date);
         return Result.success(spotReservationService.getAdminDashboard(scenicAreaId, date));
     }
@@ -284,6 +296,7 @@ public class SpotReservationController {
      */
     @PostMapping("/orders")
     public Result<SpotReservationOrderVO> createOrder(@RequestBody SpotReservationCreateDTO dto) {
+        AuthUtil.requireSelf(dto == null ? null : dto.getUserId());
         log.info("收到预约订单创建请求，userId={}, slotId={}",
                 dto == null ? null : dto.getUserId(), dto == null ? null : dto.getSlotId());
         return Result.success(spotReservationService.createOrder(dto));
@@ -297,6 +310,7 @@ public class SpotReservationController {
                                            @RequestParam(defaultValue = "10") Integer pageSize,
                                            @RequestParam Long userId,
                                            @RequestParam(required = false) String status) {
+        AuthUtil.requireSelf(userId);
         log.info("收到我的预约订单分页查询请求，pageNum={}, pageSize={}, userId={}, status={}",
                 pageNum, pageSize, userId, status);
         return Result.success(spotReservationService.pageMyOrders(pageNum, pageSize, userId, status));
@@ -308,6 +322,7 @@ public class SpotReservationController {
     @PostMapping("/orders/{reservationNo}/cancel")
     public Result<Boolean> cancelOrder(@PathVariable String reservationNo,
                                        @RequestBody SpotReservationCancelDTO dto) {
+        AuthUtil.requireSelf(dto == null ? null : dto.getUserId());
         log.info("收到预约订单取消请求，reservationNo={}, userId={}",
                 reservationNo, dto == null ? null : dto.getUserId());
         return Result.success(spotReservationService.cancelOrder(reservationNo, dto));
