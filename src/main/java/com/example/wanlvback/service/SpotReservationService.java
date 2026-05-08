@@ -49,6 +49,10 @@ public interface SpotReservationService {
     PageResult pageOrders(Integer pageNum, Integer pageSize, Long scenicAreaId, Long spotId, Long userId,
                           LocalDate visitDate, String status, String sourceType, String reservationNo);
 
+    int expireOverdueOrders();
+
+    Boolean enterOrder(String reservationNo);
+
     ReservationDashboardVO getAdminDashboard(Long scenicAreaId, LocalDate date);
 
     List<ReservationEnabledSpotVO> listReservationEnabledSpots(Long scenicAreaId, String keyword);

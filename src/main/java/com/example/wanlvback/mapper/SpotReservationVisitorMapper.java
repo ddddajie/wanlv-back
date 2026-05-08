@@ -17,4 +17,8 @@ public interface SpotReservationVisitorMapper {
                               @Param("visitDate") LocalDate visitDate);
 
     int cancelByReservationNo(@Param("reservationNo") String reservationNo);
+
+    int expireByOverdueOrders();
+
+    int enterByReservationNo(@Param("reservationNo") String reservationNo);
 }

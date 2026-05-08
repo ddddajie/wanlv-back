@@ -76,6 +76,7 @@ public class SpotReservationServiceImpl implements SpotReservationService {
     private static final String STATUS_CANCELLED = "CANCELLED";
     private static final String STATUS_COMPLETED = "COMPLETED";
     private static final String STATUS_EXPIRED = "EXPIRED";
+    private static final String STATUS_ENTERED = "ENTERED";
     private static final String STATUS_FRONTEND = "FRONTEND";
     private static final String SOURCE_AGENT = "AGENT";
     private static final String MATCH_TYPE_EXACT = "EXACT";
@@ -255,6 +256,39 @@ public class SpotReservationServiceImpl implements SpotReservationService {
         PageHelper.startPage(normalizePageNum(pageNum), normalizePageSize(pageSize));
         Page<SpotReservationOrder> page = orderMapper.pageQuery(scenicAreaId, spotId, userId, visitDate, normalizeBlank(status), normalizeBlank(sourceType), normalizeBlank(reservationNo));
         return new PageResult(page.getTotal(), page.getResult().stream().map(this::buildOrderVO).collect(Collectors.toList()));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int expireOverdueOrders() {
+        LocalDateTime now = LocalDateTime.now();
+        // 预约过期以预约结束时间为准，只处理仍占用名额的待确认/已预约订单。
+        int expiredCount = orderMapper.expireOverdueOrders(now.toLocalDate(), now.toLocalTime());
+        if (expiredCount > 0) {
+            visitorMapper.expireByOverdueOrders();
+        }
+        return expiredCount;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean enterOrder(String reservationNo) {
+        if (!StringUtils.hasText(reservationNo)) {
+            throw new BaseException("预约编号不能为空");
+        }
+        SpotReservationOrder order = orderMapper.getByReservationNo(reservationNo);
+        if (order == null) {
+            throw new BaseException("预约订单不存在");
+        }
+        if (!STATUS_CONFIRMED.equals(order.getStatus())) {
+            throw new BaseException("当前状态不允许检票入场");
+        }
+        int updated = orderMapper.enterByReservationNo(reservationNo);
+        if (updated != 1) {
+            throw new BaseException("当前状态不允许检票入场");
+        }
+        visitorMapper.enterByReservationNo(reservationNo);
+        return true;
     }
 
     @Override
@@ -612,7 +646,7 @@ public class SpotReservationServiceImpl implements SpotReservationService {
             countMap.put(row.getStatus(), defaultNumber(row.getOrderCount(), 0));
         }
         List<ReservationDashboardVO.StatusDistributionVO> result = new ArrayList<>();
-        for (String status : List.of(STATUS_CONFIRMED, STATUS_PENDING, STATUS_COMPLETED, STATUS_CANCELLED, STATUS_EXPIRED)) {
+        for (String status : List.of(STATUS_CONFIRMED, STATUS_PENDING, STATUS_ENTERED, STATUS_COMPLETED, STATUS_CANCELLED, STATUS_EXPIRED)) {
             int orderCount = countMap.getOrDefault(status, 0);
             result.add(ReservationDashboardVO.StatusDistributionVO.builder()
                     .status(status)
@@ -794,6 +828,9 @@ public class SpotReservationServiceImpl implements SpotReservationService {
     }
 
     private String resolveStatusName(String status) {
+        if (STATUS_ENTERED.equals(status)) {
+            return "已进场";
+        }
         Map<String, String> statusNames = new LinkedHashMap<>();
         statusNames.put(STATUS_CONFIRMED, "已预约");
         statusNames.put(STATUS_PENDING, "待确认");
@@ -804,6 +841,9 @@ public class SpotReservationServiceImpl implements SpotReservationService {
     }
 
     private String resolveStatusColor(String status) {
+        if (STATUS_ENTERED.equals(status)) {
+            return "#4f8cff";
+        }
         Map<String, String> statusColors = new LinkedHashMap<>();
         statusColors.put(STATUS_CONFIRMED, "#21c9aa");
         statusColors.put(STATUS_PENDING, "#f8b84e");

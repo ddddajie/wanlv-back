@@ -6,6 +6,7 @@ import com.github.pagehelper.Page;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 public interface SpotReservationOrderMapper {
@@ -45,4 +46,9 @@ public interface SpotReservationOrderMapper {
     int cancelByReservationNo(@Param("reservationNo") String reservationNo,
                               @Param("userId") Long userId,
                               @Param("cancelReason") String cancelReason);
+
+    int expireOverdueOrders(@Param("nowDate") LocalDate nowDate,
+                            @Param("nowTime") LocalTime nowTime);
+
+    int enterByReservationNo(@Param("reservationNo") String reservationNo);
 }

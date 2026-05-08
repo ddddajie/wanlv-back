@@ -69,4 +69,22 @@
           and status in ('PENDING', 'CONFIRMED')
     </update>
 
+    <update id="expireByOverdueOrders">
+        update spot_reservation_visitor visitor
+        inner join spot_reservation_order reservation_order
+            on visitor.order_id = reservation_order.id
+        set visitor.status = 'EXPIRED',
+            visitor.update_time = now()
+        where reservation_order.status = 'EXPIRED'
+          and visitor.status in ('PENDING', 'CONFIRMED')
+    </update>
+
+    <update id="enterByReservationNo">
+        update spot_reservation_visitor
+        set status = 'ENTERED',
+            update_time = now()
+        where reservation_no = #{reservationNo}
+          and status = 'CONFIRMED'
+    </update>
+
 </mapper>

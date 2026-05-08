@@ -149,4 +149,22 @@
           and status in ('PENDING', 'CONFIRMED')
     </update>
 
+    <update id="expireOverdueOrders">
+        update spot_reservation_order
+        set status = 'EXPIRED',
+            update_time = now()
+        where status in ('PENDING', 'CONFIRMED')
+          and timestamp(visit_date, end_time) &lt; timestamp(#{nowDate}, #{nowTime})
+    </update>
+
+    <update id="enterByReservationNo">
+        update spot_reservation_order
+        set status = 'ENTERED',
+            update_time = now()
+        where reservation_no = #{reservationNo}
+          and status = 'CONFIRMED'
+          and visit_date = curdate()
+          and end_time &gt;= curtime()
+    </update>
+
 </mapper>

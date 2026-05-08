@@ -158,6 +158,15 @@ public class SpotReservationController {
     }
 
     /**
+     * 模拟景点检票入场，将预约订单状态更新为已进场。
+     */
+    @PostMapping("/admin/orders/{reservationNo}/enter")
+    public Result<Boolean> enterOrder(@PathVariable String reservationNo) {
+        log.info("收到预约订单检票入场请求，reservationNo={}", reservationNo);
+        return Result.success(spotReservationService.enterOrder(reservationNo));
+    }
+
+    /**
      * 查询预约运营看板聚合数据。
      */
     @GetMapping("/admin/dashboard")
