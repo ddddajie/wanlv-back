@@ -35,6 +35,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/user/normal/code/send",
                         "/user/normal/code/login",
                         "/reservation/agent/**",
+                        "/map/agent/**",
                         "/reservation/spots/enabled",
                         "/reservation/slots",
                         "/map/init/{scenicAreaId}",

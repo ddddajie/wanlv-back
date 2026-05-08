@@ -71,8 +71,9 @@ public class UserController {
 
     /**
      * 注册普通用户账号。
+     * 已停用，由手机号登陆注册代替
      */
-    @PostMapping("/normal/register")
+//    @PostMapping("/normal/register")
     public Result<UserLoginVO> registerNormalUser(@RequestBody NormalUserRegisterDTO registerDTO) {
         log.info("收到普通用户注册请求，username={}", registerDTO.getUsername());
         return Result.success(userService.registerNormalUser(registerDTO));

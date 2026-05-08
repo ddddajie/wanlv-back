@@ -34,5 +34,7 @@ public class RouteGeoGenerateVO implements Serializable {
 
     private JSONObject geojson; // GeoJSON Feature
 
+    private List<RouteSpotDetailVO> spots; // 本次生成使用的有序景点列表
+
     private List<RouteGeoGenerateWarningVO> warnings; // 非阻断告警
 }

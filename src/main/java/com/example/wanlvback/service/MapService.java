@@ -1,5 +1,6 @@
 package com.example.wanlvback.service;
 
+import com.example.wanlvback.pojo.dto.AgentRouteGeoGenerateDTO;
 import com.example.wanlvback.pojo.dto.MapInteractionLogDTO;
 import com.example.wanlvback.pojo.dto.RouteGeoGenerateDTO;
 import com.example.wanlvback.pojo.dto.ScenicAreaDTO;
@@ -8,6 +9,7 @@ import com.example.wanlvback.pojo.dto.ScenicSpotDTO;
 import com.example.wanlvback.pojo.dto.TourRouteDTO;
 import com.example.wanlvback.pojo.dto.TourRouteGeoDTO;
 import com.example.wanlvback.pojo.vo.MapInitVO;
+import com.example.wanlvback.pojo.vo.AgentRouteGeoVO;
 import com.example.wanlvback.pojo.vo.RouteDetailVO;
 import com.example.wanlvback.pojo.vo.RouteGeoGenerateVO;
 import com.example.wanlvback.pojo.vo.ScenicAreaVO;
@@ -57,6 +59,10 @@ public interface MapService {
     TourRouteGeoVO createTourRouteGeo(TourRouteGeoDTO tourRouteGeoDTO);
 
     RouteGeoGenerateVO generateRouteGeo(Long routeId, RouteGeoGenerateDTO routeGeoGenerateDTO);
+
+    Boolean generateAgentRouteGeo(AgentRouteGeoGenerateDTO agentRouteGeoGenerateDTO);
+
+    AgentRouteGeoVO getLatestAgentRouteGeo(Long userId, Long scenicAreaId);
 
     TourRouteGeoVO updateTourRouteGeo(TourRouteGeoDTO tourRouteGeoDTO);
 

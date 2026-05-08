@@ -130,6 +130,7 @@ http://127.0.0.1:8080
 - 旅游路线管理。
 - 路线几何数据管理。
 - 根据路线景点和道路空间要素自动生成路线轨迹。
+- Agent 根据景区名和有序景点名生成定制路线轨迹，不落库，由前端缓存。
 - 景区边界、道路、区域等空间要素管理。
 - 地图初始化数据聚合返回。
 - 景点详情和路线详情查询。
@@ -156,6 +157,7 @@ http://127.0.0.1:8080
 | DELETE | `/map/routes/{id}` | 删除路线 |
 | POST | `/map/route-geos` | 新增路线几何 |
 | POST | `/map/routes/{routeId}/geo/generate` | 自动生成路线轨迹 |
+| POST | `/map/agent/routes/geo/generate` | Agent 按景区名和景点名生成定制路线轨迹，不落库 |
 | PUT | `/map/route-geos` | 更新路线几何 |
 | GET | `/map/route-geos/route/{routeId}` | 查询路线几何版本列表 |
 | POST | `/map/geo-features` | 新增空间要素 |
@@ -168,6 +170,7 @@ http://127.0.0.1:8080
 详细文档：
 
 - `docs/map-api.md`
+- `docs/agent-route-api.md`
 
 ### 景点预约
 
@@ -356,6 +359,7 @@ wanlv:
 | `docs/phone-code-login-frontend-implementation.md` | 手机验证码登录前端实现参考 |
 | `docs/user-management-api.md` | 用户管理接口文档 |
 | `docs/map-api.md` | 地图业务接口联调文档 |
+| `docs/agent-route-api.md` | Agent 定制路线轨迹工具接口文档 |
 | `docs/spot-reservation-api.md` | 景点预约接口联调文档 |
 | `docs/agent-reservation-api.md` | Agent 景点预约工具接口文档 |
 | `docs/agent-chat-api.md` | Agent 聊天接口文档 |

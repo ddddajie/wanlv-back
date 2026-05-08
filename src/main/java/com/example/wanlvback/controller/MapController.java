@@ -1,5 +1,6 @@
 package com.example.wanlvback.controller;
 
+import com.example.wanlvback.pojo.dto.AgentRouteGeoGenerateDTO;
 import com.example.wanlvback.pojo.dto.MapInteractionLogDTO;
 import com.example.wanlvback.pojo.dto.RouteGeoGenerateDTO;
 import com.example.wanlvback.pojo.dto.ScenicAreaDTO;
@@ -8,6 +9,7 @@ import com.example.wanlvback.pojo.dto.ScenicSpotDTO;
 import com.example.wanlvback.pojo.dto.TourRouteDTO;
 import com.example.wanlvback.pojo.dto.TourRouteGeoDTO;
 import com.example.wanlvback.pojo.vo.MapInitVO;
+import com.example.wanlvback.pojo.vo.AgentRouteGeoVO;
 import com.example.wanlvback.pojo.vo.RouteDetailVO;
 import com.example.wanlvback.pojo.vo.RouteGeoGenerateVO;
 import com.example.wanlvback.pojo.vo.ScenicAreaVO;
@@ -217,6 +219,29 @@ public class MapController {
         log.info("收到路线轨迹自动生成请求, routeId={}, saveAsVersion={}",
                 routeId, routeGeoGenerateDTO == null ? null : routeGeoGenerateDTO.getSaveAsVersion());
         return Result.success(mapService.generateRouteGeo(routeId, routeGeoGenerateDTO));
+    }
+
+    /**
+     * Agent 根据临时景点顺序生成定制路线轨迹，落库后只返回成功状态。
+     */
+    @PostMapping("/agent/routes/geo/generate")
+    public Result<Boolean> generateAgentRouteGeo(@RequestBody AgentRouteGeoGenerateDTO agentRouteGeoGenerateDTO) {
+        log.info("收到Agent定制路线轨迹生成请求, userId={}, scenicName={}, spotCount={}",
+                agentRouteGeoGenerateDTO == null ? null : agentRouteGeoGenerateDTO.getUserId(),
+                agentRouteGeoGenerateDTO == null ? null : agentRouteGeoGenerateDTO.getScenicName(),
+                agentRouteGeoGenerateDTO == null || agentRouteGeoGenerateDTO.getSpotNames() == null
+                        ? null : agentRouteGeoGenerateDTO.getSpotNames().size());
+        return Result.success(mapService.generateAgentRouteGeo(agentRouteGeoGenerateDTO));
+    }
+
+    /**
+     * 查询指定用户在指定景区最新生成的专属路线轨迹。
+     */
+    @GetMapping("/agent-route-geos/latest")
+    public Result<AgentRouteGeoVO> getLatestAgentRouteGeo(@RequestParam Long userId,
+                                                          @RequestParam Long scenicAreaId) {
+        log.info("收到Agent定制路线查询请求, userId={}, scenicAreaId={}", userId, scenicAreaId);
+        return Result.success(mapService.getLatestAgentRouteGeo(userId, scenicAreaId));
     }
 
     /**
