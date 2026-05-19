@@ -24,6 +24,12 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <select id="listAll" resultMap="UserDigitalProfileResultMap">
+        select *
+        from user_digital_profile
+        order by update_time desc, id desc
+    </select>
+
     <select id="getByUserId" resultMap="UserDigitalProfileResultMap">
         select *
         from user_digital_profile

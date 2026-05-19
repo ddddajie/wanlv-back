@@ -12,8 +12,10 @@ import com.example.wanlvback.pojo.dto.RealNameVerifyDTO;
 import com.example.wanlvback.pojo.vo.AdminUserVO;
 import com.example.wanlvback.pojo.vo.NormalUserVO;
 import com.example.wanlvback.pojo.vo.PhoneCodeSendVO;
+import com.example.wanlvback.pojo.vo.UserDigitalProfileVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
 import com.example.wanlvback.result.Result;
+import com.example.wanlvback.service.UserDigitalProfileService;
 import com.example.wanlvback.service.UserService;
 import com.example.wanlvback.utils.AuthUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +41,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private UserDigitalProfileService userDigitalProfileService;
 
     /**
      * 初始化系统超级管理员账号。
@@ -144,6 +149,27 @@ public class UserController {
         AuthUtil.requireAdmin();
         log.info("收到管理员详情查询请求，id={}", id);
         return Result.success(userService.getAdminUserById(id));
+    }
+
+    /**
+     * 用户画像包含敏感分析结果，仅允许超级管理员查询。
+     */
+    @GetMapping("/admin/digital-profile")
+    public Result<PageResult> pageUserDigitalProfiles(@RequestParam(defaultValue = "1") Integer pageNum,
+                                                      @RequestParam(defaultValue = "10") Integer pageSize) {
+        AuthUtil.requireSuperAdmin();
+        log.info("收到超级管理员分页查询用户画像请求，pageNum={}, pageSize={}", pageNum, pageSize);
+        return Result.success(userDigitalProfileService.pageAll(pageNum, pageSize));
+    }
+
+    /**
+     * 用户画像包含敏感分析结果，仅允许超级管理员查询。
+     */
+    @GetMapping("/admin/digital-profile/{userId}")
+    public Result<UserDigitalProfileVO> getUserDigitalProfile(@PathVariable("userId") Long userId) {
+        AuthUtil.requireSuperAdmin();
+        log.info("收到超级管理员查询用户画像请求，userId={}", userId);
+        return Result.success(userDigitalProfileService.getByUserId(userId));
     }
 
     /**

@@ -52,6 +52,8 @@
 | `PUT` | `/user/admin/update` | 更新管理员信息 | [user-management-api.md](./user-management-api.md) |
 | `PUT` | `/user/normal/update` | 更新普通用户信息 | [user-management-api.md](./user-management-api.md) |
 | `GET` | `/user/admin/{id}` | 管理员详情 | [user-management-api.md](./user-management-api.md) |
+| `GET` | `/user/admin/digital-profile` | 超级管理员分页查询用户画像 | [user-management-api.md](./user-management-api.md)、[jwt-auth-api.md](./jwt-auth-api.md) |
+| `GET` | `/user/admin/digital-profile/{userId}` | 超级管理员查询用户画像 | [user-management-api.md](./user-management-api.md)、[jwt-auth-api.md](./jwt-auth-api.md) |
 | `DELETE` | `/user/admin/{id}` | 删除管理员 | [user-management-api.md](./user-management-api.md) |
 | `GET` | `/user/normal/{id}` | 普通用户详情 | [user-management-api.md](./user-management-api.md) |
 | `DELETE` | `/user/normal/{id}` | 删除普通用户 | [user-management-api.md](./user-management-api.md) |

@@ -12,7 +12,10 @@ import com.example.wanlvback.pojo.entity.SysNormalUser;
 import com.example.wanlvback.pojo.entity.UserDigitalProfile;
 import com.example.wanlvback.pojo.entity.VisitorSession;
 import com.example.wanlvback.pojo.vo.UserDigitalProfileVO;
+import com.example.wanlvback.result.PageResult;
 import com.example.wanlvback.service.UserDigitalProfileService;
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -44,6 +47,18 @@ public class UserDigitalProfileServiceImpl implements UserDigitalProfileService 
 
     @Autowired
     private SysNormalUserMapper sysNormalUserMapper;
+
+    /**
+     * 查询全部用户画像，返回给超级管理员后台使用。
+     */
+    @Override
+    public PageResult pageAll(Integer pageNum, Integer pageSize) {
+        PageHelper.startPage(normalizePageNum(pageNum), normalizePageSize(pageSize));
+        Page<UserDigitalProfile> page = userDigitalProfileMapper.listAll();
+        return new PageResult(page.getTotal(), page.getResult().stream()
+                .map(this::buildVO)
+                .toList());
+    }
 
     /**
      * 查询用户数字画像。
@@ -301,5 +316,13 @@ public class UserDigitalProfileServiceImpl implements UserDigitalProfileService 
 
     private boolean isDeleted(Integer deleted) {
         return deleted != null && deleted == 1;
+    }
+
+    private int normalizePageNum(Integer pageNum) {
+        return pageNum == null || pageNum < 1 ? 1 : pageNum;
+    }
+
+    private int normalizePageSize(Integer pageSize) {
+        return pageSize == null || pageSize < 1 ? 10 : pageSize;
     }
 }

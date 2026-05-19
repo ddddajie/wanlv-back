@@ -108,6 +108,8 @@ http://127.0.0.1:8080
 | PUT | `/user/admin/update` | 更新管理员信息 |
 | PUT | `/user/normal/update` | 更新普通用户信息 |
 | GET | `/user/admin/{id}` | 查询管理员详情 |
+| GET | `/user/admin/digital-profile` | 超级管理员分页查询用户画像 |
+| GET | `/user/admin/digital-profile/{userId}` | 超级管理员查询用户画像 |
 | GET | `/user/normal/{id}` | 查询普通用户详情 |
 | DELETE | `/user/admin/{id}` | 删除管理员 |
 | DELETE | `/user/normal/{id}` | 删除普通用户 |

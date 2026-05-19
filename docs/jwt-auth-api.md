@@ -132,6 +132,8 @@ request.interceptors.request.use((config) => {
 | --- | --- | --- |
 | `POST` | `/user/admin/add` | 新增管理员 |
 | `DELETE` | `/user/admin/{id}` | 删除管理员 |
+| `GET` | `/user/admin/digital-profile` | 分页查询用户画像 |
+| `GET` | `/user/admin/digital-profile/{userId}` | 查询用户画像 |
 | `POST` | `/agent/session-analysis` | 单用户日报总结 |
 | `POST` | `/agent/session-analysis/daily` | 批量日报总结 |
 
