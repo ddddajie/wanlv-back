@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.KnowledgeDocumentMapper">
+
+    <resultMap id="KnowledgeDocumentResultMap" type="com.example.wanlvback.pojo.entity.KnowledgeDocument">
+        <id column="id" property="id"/>
+        <result column="scenic_area_id" property="scenicAreaId"/>
+        <result column="doc_name" property="docName"/>
+        <result column="file_name" property="fileName"/>
+        <result column="file_size" property="fileSize"/>
+        <result column="file_suffix" property="fileSuffix"/>
+        <result column="parse_status" property="parseStatus"/>
+        <result column="publish_status" property="publishStatus"/>
+        <result column="uploaded_by" property="uploadedBy"/>
+        <result column="published_time" property="publishedTime"/>
+        <result column="remark" property="remark"/>
+        <result column="deleted" property="deleted"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.KnowledgeDocument" useGeneratedKeys="true" keyProperty="id">
+        insert into knowledge_document (
+            scenic_area_id,
+            doc_name,
+            file_name,
+            file_size,
+            file_suffix,
+            parse_status,
+            publish_status,
+            uploaded_by,
+            published_time,
+            remark,
+            deleted,
+            create_time
+        ) values (
+            #{scenicAreaId},
+            #{docName},
+            #{fileName},
+            #{fileSize},
+            #{fileSuffix},
+            #{parseStatus},
+            #{publishStatus},
+            #{uploadedBy},
+            #{publishedTime},
+            #{remark},
+            #{deleted},
+            #{createTime}
+        )
+    </insert>
+
+</mapper>

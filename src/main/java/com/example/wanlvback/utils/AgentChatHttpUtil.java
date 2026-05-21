@@ -12,18 +12,23 @@ import com.example.wanlvback.pojo.entity.VisitorMessage;
 import com.example.wanlvback.pojo.entity.VisitorSession;
 import com.example.wanlvback.pojo.vo.AgentChatResponseVO;
 import com.example.wanlvback.pojo.vo.AgentSessionAnalysisResponseVO;
+import com.example.wanlvback.pojo.vo.KnowledgeTrainResponseVO;
+import com.example.wanlvback.pojo.vo.KnowledgeUploadResponseVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
@@ -187,6 +192,41 @@ public class AgentChatHttpUtil {
     }
 
     /**
+     * 转发知识库文档上传请求到 Agent。
+     *
+     * @param files 知识库文档文件列表
+     * @return Agent 上传响应
+     */
+    public KnowledgeUploadResponseVO uploadKnowledgeFiles(MultipartFile[] files) {
+        String responseBody = postMultipartFiles("/knowledge/upload", files, "知识库文档上传");
+        KnowledgeUploadResponseVO responseVO = JSON.parseObject(responseBody, KnowledgeUploadResponseVO.class);
+        if (responseVO == null) {
+            throw new BaseException("Agent 知识库文档上传响应解析失败");
+        }
+        if (responseVO.getCode() == null || responseVO.getCode() != 200) {
+            throw new BaseException(defaultIfBlank(responseVO.getMessage(), "Agent 知识库文档上传失败"));
+        }
+        return responseVO;
+    }
+
+    /**
+     * 触发 Agent 训练知识库。
+     *
+     * @return Agent 训练响应
+     */
+    public KnowledgeTrainResponseVO trainKnowledge() {
+        String responseBody = postJson("/knowledge/train", null, null, "知识库训练");
+        KnowledgeTrainResponseVO responseVO = JSON.parseObject(responseBody, KnowledgeTrainResponseVO.class);
+        if (responseVO == null) {
+            throw new BaseException("Agent 知识库训练响应解析失败");
+        }
+        if (responseVO.getCode() == null || responseVO.getCode() != 200) {
+            throw new BaseException(defaultIfBlank(responseVO.getMessage(), "Agent 知识库训练失败"));
+        }
+        return responseVO;
+    }
+
+    /**
      * 执行 Agent POST JSON 请求。
      *
      * @param path 接口路径
@@ -221,6 +261,49 @@ public class AgentChatHttpUtil {
             throw new BaseException("Agent " + actionName + "服务响应超时，请稍后重试");
         } catch (IOException e) {
             log.error("调用 Agent {}接口失败，url={}, sessionCode={}", actionName, url, sessionCode, e);
+            throw new BaseException("调用 Agent " + actionName + "服务失败");
+        }
+    }
+
+    /**
+     * 执行 Agent multipart 文件上传请求。
+     *
+     * @param path 接口路径
+     * @param files 上传文件列表
+     * @param actionName 当前调用动作名称
+     * @return 原始响应体
+     */
+    private String postMultipartFiles(String path, MultipartFile[] files, String actionName) {
+        String url = agentBaseUrl + path;
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            HttpPost httpPost = new HttpPost(url);
+            httpPost.setConfig(buildRequestConfig());
+
+            MultipartEntityBuilder builder = MultipartEntityBuilder.create()
+                    .setCharset(StandardCharsets.UTF_8);
+            for (MultipartFile file : files) {
+                if (file == null || file.isEmpty()) {
+                    continue;
+                }
+                String originalFilename = defaultIfBlank(file.getOriginalFilename(), "knowledge-file");
+                // 重点：表单字段名必须保持为 files，和 Agent 上传接口约定一致。
+                builder.addBinaryBody("files", file.getBytes(), ContentType.DEFAULT_BINARY, originalFilename);
+            }
+            httpPost.setEntity(builder.build());
+
+            try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+                String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                if (!StringUtils.hasText(responseBody)) {
+                    throw new BaseException("Agent " + actionName + "服务返回为空");
+                }
+                return responseBody;
+            }
+        } catch (SocketTimeoutException e) {
+            log.error("调用 Agent {}接口超时，url={}, connectTimeoutMs={}, readTimeoutMs={}",
+                    actionName, url, agentConnectTimeoutMs, agentReadTimeoutMs, e);
+            throw new BaseException("Agent " + actionName + "服务响应超时，请稍后重试");
+        } catch (IOException e) {
+            log.error("调用 Agent {}接口失败，url={}", actionName, url, e);
             throw new BaseException("调用 Agent " + actionName + "服务失败");
         }
     }
