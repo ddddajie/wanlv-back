@@ -25,7 +25,8 @@
 
 | 场景 | 优先阅读 | 说明 |
 | --- | --- | --- |
-| 前端登录、注册、验证码登录 | [frontend-api.md](./frontend-api.md)、[jwt-auth-api.md](./jwt-auth-api.md)、[phone-code-login-frontend-implementation.md](./phone-code-login-frontend-implementation.md) | 登录态、token、验证码登录实现参考 |
+| Web/Android 登录与无感刷新 | [token-refresh-client-integration.md](./token-refresh-client-integration.md)、[jwt-auth-api.md](./jwt-auth-api.md) | Token 字段、401 单飞刷新、请求重放、退出登录 |
+| 前端登录、注册、验证码登录 | [frontend-api.md](./frontend-api.md)、[phone-code-login-frontend-implementation.md](./phone-code-login-frontend-implementation.md) | 登录与验证码页面实现参考 |
 | 用户管理后台 | [user-management-api.md](./user-management-api.md) | 管理员和普通用户的查询、更新、分页、删除 |
 | 实名认证和预约下单改造 | [real-name-reservation-frontend-api.md](./real-name-reservation-frontend-api.md)、[spot-reservation-api.md](./spot-reservation-api.md) | 实名字段、预约游客信息、订单返回字段 |
 | 景点预约用户端和管理端 | [spot-reservation-api.md](./spot-reservation-api.md) | 预约景点、时段、订单、规则、后台看板 |
@@ -48,6 +49,8 @@
 | `POST` | `/user/normal/login` | 普通用户账号密码登录 | [frontend-api.md](./frontend-api.md) |
 | `POST` | `/user/normal/code/send` | 发送手机验证码 | [frontend-api.md](./frontend-api.md) |
 | `POST` | `/user/normal/code/login` | 手机验证码登录/自动注册 | [frontend-api.md](./frontend-api.md) |
+| `POST` | `/user/normal/token/refresh` | 刷新并轮换普通用户 Token | [jwt-auth-api.md](./jwt-auth-api.md)、[token-refresh-client-integration.md](./token-refresh-client-integration.md) |
+| `POST` | `/user/normal/logout` | 作废当前设备 refreshToken | [jwt-auth-api.md](./jwt-auth-api.md)、[token-refresh-client-integration.md](./token-refresh-client-integration.md) |
 | `POST` | `/user/normal/real-name/verify` | 普通用户实名认证 | [real-name-reservation-frontend-api.md](./real-name-reservation-frontend-api.md) |
 | `PUT` | `/user/admin/update` | 更新管理员信息 | [user-management-api.md](./user-management-api.md) |
 | `PUT` | `/user/normal/update` | 更新普通用户信息 | [user-management-api.md](./user-management-api.md) |

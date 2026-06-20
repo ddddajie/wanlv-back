@@ -9,11 +9,13 @@ import com.example.wanlvback.pojo.dto.NormalUserUpdateDTO;
 import com.example.wanlvback.pojo.dto.PhoneCodeLoginDTO;
 import com.example.wanlvback.pojo.dto.PhoneCodeSendDTO;
 import com.example.wanlvback.pojo.dto.RealNameVerifyDTO;
+import com.example.wanlvback.pojo.dto.RefreshTokenDTO;
 import com.example.wanlvback.pojo.vo.AdminUserVO;
 import com.example.wanlvback.pojo.vo.NormalUserVO;
 import com.example.wanlvback.pojo.vo.PhoneCodeSendVO;
 import com.example.wanlvback.pojo.vo.UserDigitalProfileVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
+import com.example.wanlvback.pojo.vo.TokenRefreshVO;
 import com.example.wanlvback.result.Result;
 import com.example.wanlvback.service.UserDigitalProfileService;
 import com.example.wanlvback.service.UserService;
@@ -90,7 +92,7 @@ public class UserController {
     @PostMapping("/normal/login")
     public Result<UserLoginVO> normalLogin(@RequestBody NormalUserLoginDTO loginDTO) {
         log.info("收到普通用户登录请求，username={}", loginDTO.getUsername());
-        return Result.success(userService.normalLogin(loginDTO));
+        return Result.success("成功", userService.normalLogin(loginDTO));
     }
 
     /**
@@ -108,7 +110,25 @@ public class UserController {
     @PostMapping("/normal/code/login")
     public Result<UserLoginVO> normalPhoneCodeLogin(@RequestBody PhoneCodeLoginDTO loginDTO) {
         log.info("收到普通用户手机验证码登录请求，phone={}", loginDTO == null ? null : loginDTO.getPhone());
-        return Result.success(userService.normalPhoneCodeLogin(loginDTO));
+        return Result.success("成功", userService.normalPhoneCodeLogin(loginDTO));
+    }
+
+    /**
+     * 使用 refreshToken 无感刷新登录状态。
+     */
+    @PostMapping("/normal/token/refresh")
+    public Result<TokenRefreshVO> refreshNormalUserToken(@RequestBody RefreshTokenDTO tokenDTO) {
+        String refreshToken = tokenDTO == null ? null : tokenDTO.getRefreshToken();
+        return Result.success("刷新成功", userService.refreshNormalUserToken(refreshToken));
+    }
+
+    /**
+     * 普通用户退出，只作废当前设备持有的 refreshToken。
+     */
+    @PostMapping("/normal/logout")
+    public Result<Void> logoutNormalUser(@RequestBody(required = false) RefreshTokenDTO tokenDTO) {
+        userService.logoutNormalUser(tokenDTO == null ? null : tokenDTO.getRefreshToken());
+        return Result.success("退出成功", null);
     }
 
     /**

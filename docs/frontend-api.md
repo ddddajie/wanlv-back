@@ -9,11 +9,11 @@
 - 默认 Base URL：`http://127.0.0.1:8080`
 - 当前接口统一前缀：`/user`
 - 请求体格式：`application/json`
-- 当前后端已启用 JWT 鉴权，登录/注册成功后需要缓存 `data.token`
+- 当前后端已启用 JWT 鉴权，普通用户登录成功后需要同时缓存 `data.token` 和 `data.refreshToken`
 - 除登录、注册、发送验证码等白名单接口外，前端请求需要携带 `Authorization: Bearer <token>`
 - 当前阶段接口成功或失败，前端都要优先判断响应体中的 `code`
 
-推荐前端 axios 配置：
+下面是基础 axios 配置；普通用户项目还必须接入 401 单飞刷新与请求重放，完整实现见 [token-refresh-client-integration.md](./token-refresh-client-integration.md)：
 
 ```ts
 import axios from 'axios'
@@ -59,7 +59,7 @@ export default request
 
 字段说明：
 
-- `code`: 业务状态码，`200` 表示成功，`500` 表示业务失败
+- `code`: 业务状态码，`200` 表示成功，`401` 表示登录状态失效，`500` 表示业务失败
 - `msg`: 响应消息，成功通常为 `success`，失败时为具体错误原因
 - `data`: 响应数据，成功时返回具体对象或字符串，失败时通常为 `null`
 
@@ -100,6 +100,7 @@ export default request
 - `请求参数格式错误`
 - `数据已存在`
 - `系统繁忙，请稍后重试`
+- `登录状态已过期，请重新登录`
 
 推荐前端处理方式：
 
@@ -114,12 +115,16 @@ export default request
 export interface UserLoginVO {
   id: number
   username: string
+  phone?: string | null
   displayName: string
   userType: 'admin' | 'normal'
   role: string
   status: number
   realNameStatus: number | null
   token: string
+  refreshToken?: string | null
+  expireSeconds?: number | null
+  refreshExpireSeconds?: number | null
   lastLoginTime: string | null
 }
 ```
@@ -128,12 +133,16 @@ export interface UserLoginVO {
 
 - `id`: 用户 ID
 - `username`: 账号
+- `phone`: 手机号
 - `displayName`: 展示名称
 - `userType`: 用户类型，管理员为 `admin`，普通用户为 `normal`
 - `role`: 角色
 - `status`: 状态，当前启用为 `1`，禁用为 `0`
 - `realNameStatus`: 普通用户实名状态，管理员为空
-- `token`: JWT 登录凭证
+- `token`: accessToken，默认有效期 2 小时
+- `refreshToken`: 普通用户刷新凭证，默认有效期 3 天；管理员登录时为空
+- `expireSeconds`: accessToken 有效秒数，普通用户默认 `7200`
+- `refreshExpireSeconds`: refreshToken 有效秒数，普通用户默认 `259200`
 - `lastLoginTime`: 最后登录时间，建议前端按字符串处理
 
 ### 4.2 手机验证码发送返回对象 `PhoneCodeSendVO`
@@ -154,7 +163,18 @@ export interface PhoneCodeSendVO {
 - `expireSeconds`: 有效秒数，当前为 `300`
 - `expireTime`: 过期时间，建议前端按字符串处理
 
-### 4.3 通用响应结构
+### 4.3 Token 刷新返回对象 `TokenRefreshVO`
+
+```ts
+export interface TokenRefreshVO {
+  token: string
+  refreshToken: string
+  expireSeconds: number
+  refreshExpireSeconds: number
+}
+```
+
+### 4.4 通用响应结构
 
 ```ts
 export interface ApiResponse<T> {
@@ -175,6 +195,8 @@ export interface ApiResponse<T> {
 5. 普通用户登录
 6. 发送普通用户手机验证码
 7. 普通用户手机验证码登录/自动注册
+8. 普通用户刷新 Token
+9. 普通用户退出登录
 
 ---
 
@@ -264,6 +286,7 @@ export interface AdminLoginDTO {
     "userType": "admin",
     "role": "super_admin",
     "status": 1,
+    "token": "ADMIN_ACCESS_TOKEN",
     "lastLoginTime": "2026-04-11T20:30:00"
   }
 }
@@ -280,7 +303,8 @@ export interface AdminLoginDTO {
 前端建议：
 
 - 登录成功后将 `data` 缓存在 `pinia` 和 `localStorage`
-- 当前后端不返回 token，所以先不要设计基于 token 的路由守卫
+- 管理员登录会返回 accessToken，但暂不返回 refreshToken；accessToken 失效后需要重新登录
+- 管理端路由守卫应校验 `token`、`userType` 和 `role`
 - 可以根据 `role` 区分 `super_admin` 和 `admin`
 
 ### 6.3 新增管理员
@@ -288,7 +312,7 @@ export interface AdminLoginDTO {
 - 路径：`/user/admin/add`
 - 方法：`POST`
 - 用途：由超级管理员新增管理员
-- 是否需要登录：当前后端未做登录拦截，但请求体中必须传操作人账号密码
+- 是否需要登录：是，需要超级管理员 accessToken
 
 请求参数：
 
@@ -433,10 +457,11 @@ export interface NormalUserRegisterDTO {
 ```json
 {
   "code": 200,
-  "msg": "success",
+  "msg": "成功",
   "data": {
     "id": 10,
     "username": "user01",
+    "phone": "13800138000",
     "displayName": "小王",
     "userType": "normal",
     "role": "normal_user",
@@ -486,14 +511,19 @@ export interface NormalUserLoginDTO {
 ```json
 {
   "code": 200,
-  "msg": "success",
+  "msg": "成功",
   "data": {
     "id": 10,
     "username": "user01",
+    "phone": "13800138000",
     "displayName": "小王",
     "userType": "normal",
     "role": "normal_user",
     "status": 1,
+    "token": "ACCESS_TOKEN",
+    "refreshToken": "REFRESH_TOKEN",
+    "expireSeconds": 7200,
+    "refreshExpireSeconds": 259200,
     "lastLoginTime": "2026-04-11T20:35:00"
   }
 }
@@ -508,7 +538,7 @@ export interface NormalUserLoginDTO {
 
 前端建议：
 
-- 登录成功后缓存用户信息
+- 登录成功后同时缓存用户信息、`token` 和 `refreshToken`
 - 根据 `userType` 和 `role` 决定进入普通用户端还是管理端
 
 ### 6.6 发送普通用户手机验证码
@@ -599,16 +629,20 @@ export interface PhoneCodeLoginDTO {
 ```json
 {
   "code": 200,
-  "msg": "success",
+  "msg": "成功",
   "data": {
     "id": 12,
     "username": "13900139000",
+    "phone": "13900139000",
     "displayName": "用户A8k21Q",
     "userType": "normal",
     "role": "normal_user",
     "status": 1,
     "realNameStatus": 0,
-    "token": "eyJhbGciOiJIUzI1NiJ9...",
+    "token": "ACCESS_TOKEN",
+    "refreshToken": "REFRESH_TOKEN",
+    "expireSeconds": 7200,
+    "refreshExpireSeconds": 259200,
     "lastLoginTime": "2026-05-08T14:16:35"
   }
 }
@@ -635,13 +669,59 @@ export interface PhoneCodeLoginDTO {
 前端建议：
 
 - 普通用户端推荐默认展示“手机号验证码登录”，账号密码登录作为备用入口。
-- 登录成功后按普通登录一样缓存 `UserLoginVO` 和 `token`。
+- 登录成功后按普通登录一样缓存 `UserLoginVO`、`token` 和 `refreshToken`。
 - 如果 `realNameStatus !== 1`，预约前仍要引导用户完成实名认证。
+
+### 6.8 普通用户刷新 Token
+
+- 路径：`/user/normal/token/refresh`
+- 方法：`POST`
+- 是否需要 accessToken：否
+
+请求：
+
+```json
+{
+  "refreshToken": "REFRESH_TOKEN"
+}
+```
+
+成功响应：
+
+```json
+{
+  "code": 200,
+  "msg": "刷新成功",
+  "data": {
+    "token": "NEW_ACCESS_TOKEN",
+    "refreshToken": "NEW_REFRESH_TOKEN",
+    "expireSeconds": 7200,
+    "refreshExpireSeconds": 259200
+  }
+}
+```
+
+刷新成功后必须同时覆盖两个 Token。无效或过期时返回 HTTP 401，客户端应清理登录态。并发控制和请求重放见 [token-refresh-client-integration.md](./token-refresh-client-integration.md)。
+
+### 6.9 普通用户退出登录
+
+- 路径：`/user/normal/logout`
+- 方法：`POST`
+- 是否需要 accessToken：否
+
+```json
+{
+  "refreshToken": "REFRESH_TOKEN"
+}
+```
+
+后端只作废当前 refreshToken，不影响其他设备。客户端应在接口完成后清理本地 Token。
 
 ## 7. 推荐前端接口封装
 
 ```ts
 import request from '@/utils/request'
+import refreshRequest from '@/utils/refresh-request'
 
 export interface ApiResponse<T> {
   code: number
@@ -652,12 +732,16 @@ export interface ApiResponse<T> {
 export interface UserLoginVO {
   id: number
   username: string
+  phone?: string | null
   displayName: string
   userType: 'admin' | 'normal'
   role: string
   status: number
   realNameStatus: number | null
   token: string
+  refreshToken?: string | null
+  expireSeconds?: number | null
+  refreshExpireSeconds?: number | null
   lastLoginTime: string | null
 }
 
@@ -666,6 +750,13 @@ export interface PhoneCodeSendVO {
   code: string
   expireSeconds: number
   expireTime: string
+}
+
+export interface TokenRefreshVO {
+  token: string
+  refreshToken: string
+  expireSeconds: number
+  refreshExpireSeconds: number
 }
 
 export const initSuperAdminApi = () =>
@@ -720,6 +811,12 @@ export const normalPhoneCodeLoginApi = (data: {
   code: string
 }) =>
   request.post<any, ApiResponse<UserLoginVO>>('/user/normal/code/login', data)
+
+export const refreshNormalUserTokenApi = (refreshToken: string) =>
+  refreshRequest.post<any, ApiResponse<TokenRefreshVO>>('/user/normal/token/refresh', { refreshToken })
+
+export const logoutNormalUserApi = (refreshToken: string) =>
+  request.post<any, ApiResponse<null>>('/user/normal/logout', { refreshToken })
 ```
 
 ## 8. 页面开发建议
@@ -748,6 +845,7 @@ export const normalPhoneCodeLoginApi = (data: {
 export interface AuthState {
   userInfo: UserLoginVO | null
   token: string
+  refreshToken: string
   isLogin: boolean
 }
 ```
@@ -756,15 +854,14 @@ export interface AuthState {
 
 - `userInfo`
 - `token`
+- `refreshToken`
 - `isLogin`
 
-当前不建议缓存：
-
-- 管理员新增接口里的 `operatorPassword`
+不要缓存管理员新增接口里的 `operatorPassword`。
 
 ## 9. 当前接口限制
 
-- 当前管理员新增接口仍依赖请求体中的 `operatorUsername + operatorPassword`
+- 管理员新增接口权限以 JWT 中的 `role = super_admin` 为准
 - 当前普通用户注册接口中的 `interestTags` 不是数组，而是字符串
 - 手机验证码当前是后端模拟短信，响应会直接返回验证码；后续接入真实短信后前端不应依赖返回 `code`
 
@@ -781,10 +878,11 @@ export interface AuthState {
 
 要求：
 1. 使用 axios 封装请求
-2. 使用 pinia 管理登录用户信息和 token
+2. 使用 pinia 管理登录用户信息、token 和 refreshToken
 3. 所有接口统一按响应体 code 判断成功失败
 4. 失败提示直接显示后端 msg
 5. 普通用户默认走 /user/normal/code/send 和 /user/normal/code/login
 6. 表单使用 Element Plus，并补充必要校验
 7. 页面风格简洁、可直接联调后端
+8. 按 docs/token-refresh-client-integration.md 实现 401 单飞刷新和原请求重放
 ```

@@ -77,6 +77,7 @@ spring:
 
 1. 本地 MySQL 已创建 `wanlv` 数据库。
 2. 已导入 `src/main/resources/sql/wanlv.sql` 中的表结构和基础数据。
+   如果是已有数据库，仅需额外执行 `src/main/resources/sql/normal_user_refresh_token_migration.sql` 创建刷新令牌表。
 3. 数据库账号密码与 `application.yml` 一致，或按本地环境修改配置。
 4. 如需联调 Agent 聊天、会话分析、Agent 预约或 Agent 路线功能，确保 Agent 服务运行在 `http://127.0.0.1:8000`，或修改 `wanlv.agent.base-url`。
 
@@ -106,7 +107,8 @@ http://127.0.0.1:8080
 wanlv:
   jwt:
     secret-key: ${WANLV_JWT_SECRET:wanlv-jwt-secret-key-change-me-at-least-32-bytes}
-    ttl-ms: ${WANLV_JWT_TTL_MS:86400000}
+    ttl-ms: ${WANLV_JWT_TTL_MS:7200000}
+    refresh-ttl-ms: ${WANLV_REFRESH_TOKEN_TTL_MS:259200000}
     header-name: Authorization
     token-prefix: Bearer
 ```
@@ -116,6 +118,8 @@ wanlv:
 ```text
 Authorization: Bearer <token>
 ```
+
+普通用户 accessToken 默认有效期为 2 小时，refreshToken 默认有效期为 3 天。刷新成功后服务端会轮换 refreshToken，Web 与 Android 接入方式见 `docs/token-refresh-client-integration.md`。
 
 ### 内部接口鉴权
 
@@ -177,7 +181,7 @@ wanlv:
 `WebMvcConfig` 默认对 `/**` 开启 JWT 拦截，并排除以下公开或内部接口：
 
 - 内部接口：`/internal/**`，由内部接口拦截器单独处理。
-- 登录和初始化：`/user/init`、`/user/admin/login`、`/user/normal/login`、`/user/normal/code/send`、`/user/normal/code/login`。
+- 登录和初始化：`/user/init`、`/user/admin/login`、`/user/normal/login`、`/user/normal/code/send`、`/user/normal/code/login`、`/user/normal/token/refresh`、`/user/normal/logout`。
 - Agent 工具接口：`/reservation/agent/**`、`/map/agent/**`。
 - 公开查询接口：`/reservation/spots/enabled`、`/reservation/slots`、`/map/init/{scenicAreaId}`、`/map/scenic-areas/page`。
 
@@ -191,7 +195,7 @@ wanlv:
 
 - 初始化默认超级管理员。
 - 管理员登录、新增、更新、详情、删除、分页查询。
-- 普通用户账号密码登录、手机号验证码发送、验证码登录/自动注册。
+- 普通用户账号密码登录、手机号验证码发送、验证码登录/自动注册、Token 无感刷新和单设备退出。
 - 普通用户实名认证、更新、详情、删除、分页查询。
 - 超级管理员查看用户数字画像。
 - 密码入库前加密，查询结果不返回密码字段。
@@ -206,6 +210,8 @@ wanlv:
 | `POST` | `/user/normal/login` | 普通用户账号密码登录 |
 | `POST` | `/user/normal/code/send` | 发送手机验证码 |
 | `POST` | `/user/normal/code/login` | 手机验证码登录/自动注册 |
+| `POST` | `/user/normal/token/refresh` | 轮换普通用户 accessToken 和 refreshToken |
+| `POST` | `/user/normal/logout` | 作废当前设备 refreshToken |
 | `POST` | `/user/normal/real-name/verify` | 普通用户实名认证 |
 | `PUT` | `/user/admin/update` | 更新管理员信息 |
 | `PUT` | `/user/normal/update` | 更新普通用户信息 |
@@ -218,6 +224,7 @@ wanlv:
 
 - `docs/frontend-api.md`
 - `docs/jwt-auth-api.md`
+- `docs/token-refresh-client-integration.md`
 - `docs/user-management-api.md`
 - `docs/real-name-reservation-frontend-api.md`
 
@@ -379,7 +386,7 @@ Agent 预约工具接口：
 
 | 模块 | 主要表 |
 | --- | --- |
-| 用户 | `sys_admin_user`、`sys_normal_user` |
+| 用户 | `sys_admin_user`、`sys_normal_user`、`sys_normal_user_refresh_token` |
 | 地图 | `scenic_area`、`scenic_spot`、`scenic_geo_feature`、`tour_route`、`tour_route_spot`、`tour_route_geo`、`agent_route_geo`、`map_interaction_log` |
 | 预约 | `spot_reservation_rule`、`spot_reservation_slot`、`spot_reservation_order`、`spot_reservation_visitor` |
 | Agent 会话 | `visitor_session`、`visitor_message`、`knowledge_document`、`message_store` |
@@ -391,6 +398,7 @@ Agent 预约工具接口：
 | --- | --- |
 | `docs/README.md` | 接口文档总览、阅读顺序和当前接口路由总表 |
 | `docs/jwt-auth-api.md` | JWT 登录鉴权与前端接入文档 |
+| `docs/token-refresh-client-integration.md` | Web 与 Android Token 无感刷新快速接入说明 |
 | `docs/frontend-api.md` | 前端基础登录接口文档 |
 | `docs/phone-code-login-frontend-implementation.md` | 手机验证码登录前端实现参考 |
 | `docs/user-management-api.md` | 用户管理接口文档 |
@@ -407,11 +415,12 @@ Agent 预约工具接口：
 
 1. 导入 `src/main/resources/sql/wanlv.sql`，确认数据库连接可用。
 2. 调用 `/user/init` 初始化超级管理员。
-3. 调用 `/user/admin/login` 或 `/user/normal/code/login` 获取 JWT。
-4. 地图页面优先调用 `/map/init/{scenicAreaId}` 获取景区、空间要素、景点和路线聚合数据。
-5. 预约页面先调用 `/reservation/spots/enabled` 和 `/reservation/slots`，再创建订单。
-6. Agent 聊天、Agent 预约、Agent 路线和日报总结功能联调前，先确认独立 Agent 服务已启动。
-7. 前端统一封装请求时，优先判断响应体 `code === 200`。
+3. 调用 `/user/admin/login` 或 `/user/normal/code/login` 获取登录凭证；普通用户端同时保存 accessToken 和 refreshToken。
+4. 普通用户端按 `docs/token-refresh-client-integration.md` 接入 401 单飞刷新和原请求重放。
+5. 地图页面优先调用 `/map/init/{scenicAreaId}` 获取景区、空间要素、景点和路线聚合数据。
+6. 预约页面先调用 `/reservation/spots/enabled` 和 `/reservation/slots`，再创建订单。
+7. Agent 聊天、Agent 预约、Agent 路线和日报总结功能联调前，先确认独立 Agent 服务已启动。
+8. 前端统一封装请求时，优先判断响应体 `code === 200`。
 
 ## 文档维护约定
 

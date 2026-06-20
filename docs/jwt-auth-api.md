@@ -1,250 +1,205 @@
-# JWT 登录鉴权接口文档
+# JWT 登录鉴权与 Token 刷新接口文档
 
 ## 1. 接入结论
 
-当前后端已经接入无状态 JWT 鉴权。
+后端使用 JWT accessToken 鉴权，并为普通用户提供 refreshToken 无感刷新能力。
 
-前端登录或注册成功后，需要从登录返回对象中读取 `token`，并在后续需要登录的接口里统一携带：
+- accessToken 默认有效期：`7200` 秒（2 小时）。
+- refreshToken 默认有效期：`259200` 秒（3 天）。
+- 普通用户每次登录都会生成独立的 refreshToken，因此 Web、Android 或多个浏览器可以同时登录。
+- refreshToken 成功刷新后会立即轮换，旧 refreshToken 作废，新 refreshToken 重新获得 3 天有效期。
+- 管理员登录暂不签发 refreshToken，仍按原 JWT 登录方式处理。
+
+访问受保护接口时统一携带：
 
 ```http
-Authorization: Bearer <token>
+Authorization: Bearer <ACCESS_TOKEN>
 ```
 
-未携带 token、token 过期、token 签名无效时，后端会返回 HTTP `401`，响应体仍为项目统一结构。
+## 2. 普通用户登录
+
+以下两个接口的请求参数保持不变：
+
+```http
+POST /user/normal/login
+POST /user/normal/code/login
+Content-Type: application/json
+```
+
+普通用户登录成功响应示例：
 
 ```json
 {
-  "code": 401,
-  "msg": "请先登录",
-  "data": null
+  "code": 200,
+  "msg": "成功",
+  "data": {
+    "id": 1,
+    "username": "user",
+    "phone": "13800138000",
+    "displayName": "用户",
+    "userType": "normal",
+    "role": "normal_user",
+    "status": 1,
+    "realNameStatus": 0,
+    "token": "ACCESS_TOKEN",
+    "refreshToken": "REFRESH_TOKEN",
+    "expireSeconds": 7200,
+    "refreshExpireSeconds": 259200,
+    "lastLoginTime": "2026-06-20T16:30:00"
+  }
 }
 ```
 
-## 2. 登录返回对象
-
-登录、普通用户注册接口的 `data` 均为 `UserLoginVO`。
+普通用户登录返回对象：
 
 ```ts
 export interface UserLoginVO {
   id: number
   username: string
+  phone?: string | null
   displayName: string
-  userType: 'admin' | 'normal'
-  role: 'super_admin' | 'admin' | 'normal_user'
+  userType: 'normal'
+  role: 'normal_user'
   status: number
   realNameStatus?: number | null
   token: string
+  refreshToken: string
+  expireSeconds: number
+  refreshExpireSeconds: number
   lastLoginTime?: string | null
 }
 ```
 
-字段说明：
+## 3. 刷新 Token
 
-| 字段 | 说明 |
+```http
+POST /user/normal/token/refresh
+Content-Type: application/json
+```
+
+该接口不要求携带 Authorization，因为调用时 accessToken 可能已经过期。
+
+请求：
+
+```json
+{
+  "refreshToken": "REFRESH_TOKEN"
+}
+```
+
+成功响应：
+
+```json
+{
+  "code": 200,
+  "msg": "刷新成功",
+  "data": {
+    "token": "NEW_ACCESS_TOKEN",
+    "refreshToken": "NEW_REFRESH_TOKEN",
+    "expireSeconds": 7200,
+    "refreshExpireSeconds": 259200
+  }
+}
+```
+
+刷新成功后，客户端必须同时覆盖本地的 accessToken 和 refreshToken。旧 refreshToken 已经作废，不能再次使用。
+
+refreshToken 不存在、已过期、已作废，或所属账号已失效时，返回 HTTP `401`：
+
+```json
+{
+  "code": 401,
+  "msg": "登录状态已过期，请重新登录",
+  "data": null
+}
+```
+
+重点：多个业务请求同时收到 `401` 时，客户端只能发起一次刷新请求，其余请求等待该刷新结果后重放，避免同一个 refreshToken 被并发使用。
+
+## 4. 退出登录
+
+```http
+POST /user/normal/logout
+Content-Type: application/json
+```
+
+请求：
+
+```json
+{
+  "refreshToken": "REFRESH_TOKEN"
+}
+```
+
+成功响应：
+
+```json
+{
+  "code": 200,
+  "msg": "退出成功",
+  "data": null
+}
+```
+
+退出接口是幂等的：refreshToken 不存在或已经失效时也按退出成功处理。客户端应在接口完成后清理本地 Token。退出只作废当前请求携带的 refreshToken，不影响其他设备。
+
+accessToken 是无状态 JWT，退出后可能在剩余有效期内继续通过签名校验；客户端必须立即删除它。后端以 refreshToken 作废来阻止该设备继续续期。
+
+## 5. 401 处理规则
+
+| 场景 | 客户端处理 |
 | --- | --- |
-| `id` | 当前登录用户 ID |
-| `username` | 登录账号 |
-| `displayName` | 展示名称 |
-| `userType` | 用户类型，管理员为 `admin`，普通用户为 `normal` |
-| `role` | 角色，超级管理员为 `super_admin`，普通管理员为 `admin`，普通用户为 `normal_user` |
-| `status` | 用户状态 |
-| `realNameStatus` | 普通用户实名状态，管理员为空 |
-| `token` | JWT 登录凭证 |
-| `lastLoginTime` | 最后登录时间 |
+| 普通用户业务接口返回 HTTP 401，且本地有 refreshToken | 单飞调用刷新接口，成功后更新两个 Token 并重放原请求 |
+| 刷新接口返回 HTTP 401 | 清理本地登录态并跳转登录页 |
+| 没有 refreshToken | 清理本地登录态并跳转登录页 |
+| 同一请求刷新后再次返回 401 | 不再刷新，直接退出登录，防止死循环 |
+| 管理员接口返回 HTTP 401 | 管理员没有 refreshToken，直接重新登录 |
 
-## 3. 无需 token 的接口
+不要把业务 `code = 500` 当作 Token 过期，也不要拦截刷新接口自身的 `401` 后再次刷新。
 
-以下接口不需要携带 `Authorization`：
+Web 与 Android 的完整接入代码见 [token-refresh-client-integration.md](./token-refresh-client-integration.md)。
+
+## 6. 无需 accessToken 的接口
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `POST` | `/user/admin/login` | 管理员登录 |
-| `POST` | `/user/normal/login` | 普通用户登录 |
-| `POST` | `/user/normal/register` | 普通用户注册（当前代码中已停用，优先使用手机验证码登录自动注册） |
+| `POST` | `/user/normal/login` | 普通用户账号密码登录 |
+| `POST` | `/user/normal/register` | 普通用户注册（当前 Controller 中已停用） |
 | `POST` | `/user/normal/code/send` | 发送普通用户手机验证码 |
 | `POST` | `/user/normal/code/login` | 普通用户手机验证码登录/自动注册 |
+| `POST` | `/user/normal/token/refresh` | 普通用户刷新 Token |
+| `POST` | `/user/normal/logout` | 普通用户退出登录 |
 | `GET/POST` | `/user/init` | 初始化超级管理员 |
 | `GET/POST` | `/reservation/agent/**` | Agent 服务调用的预约工具接口 |
 | `GET` | `/reservation/spots/enabled` | 查询可预约景点 |
 | `GET` | `/reservation/slots` | 查询指定景点某天可预约时段 |
 
-`/internal/**` 仍然走原来的内部接口鉴权，使用 `X-Internal-Token`，不使用用户 JWT。
+`/internal/**` 使用 `X-Internal-Token`，不使用用户 JWT。
 
-`/reservation/agent/**` 是后端 Agent 服务调用的工具接口，当前不要求用户 JWT。前端用户必须先登录才能使用智能问答主入口 `/agent/chat`，后端会在主链路中把用户上下文传给 Agent。
+## 7. 需要 accessToken 的接口与权限
 
-## 4. 需要 token 的接口
+除白名单接口外，其余接口默认需要有效 accessToken。
 
-除第 3 节列出的接口外，其余接口默认都需要携带 JWT。
+普通用户本人接口会校验请求中的 `userId` 或 `id` 必须等于 Token 中的当前用户 ID。管理员接口根据 JWT 中的 `userType` 和 `role` 校验权限，超级管理员功能要求 `role = super_admin`。
 
-前端请求封装建议：
+重点：客户端不能通过修改 `userId` 查看或操作其他用户数据。
 
-```ts
-request.interceptors.request.use((config) => {
-  const token = userStore.token || localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
+## 8. 后端存储与安全说明
+
+数据库表为 `sys_normal_user_refresh_token`，每条记录保存：
+
+- refreshToken 的 SHA-256 摘要，不保存可直接使用的明文 Token。
+- 普通用户 ID。
+- 过期时间。
+- 失效状态。
+
+刷新时后端通过条件更新原子作废旧 Token，因此同一个 refreshToken 即使被并发提交，也只允许一个请求刷新成功。
+
+现有数据库需要执行一次增量脚本：
+
+```text
+src/main/resources/sql/normal_user_refresh_token_migration.sql
 ```
 
-收到 `401` 时建议清理本地登录态，并跳转登录页。
-
-## 5. 权限规则
-
-### 5.1 普通用户本人接口
-
-普通用户接口会校验请求中的 `userId` 必须等于 token 中的当前用户 ID。
-
-涉及接口包括但不限于：
-
-| 方法 | 路径 | 校验 |
-| --- | --- | --- |
-| `POST` | `/user/normal/real-name/verify` | 请求体 `userId` 必须是当前用户 |
-| `PUT` | `/user/normal/update` | 请求体 `id` 必须是当前用户，管理员可操作 |
-| `GET` | `/user/normal/{id}` | 路径 `id` 必须是当前用户，管理员可查看 |
-| `POST` | `/agent/chat` | 请求体 `userId` 必须是当前用户 |
-| `POST` | `/agent/session/scenic-area/bind` | 请求体 `userId` 必须是当前用户 |
-| `GET` | `/agent/digital-profile/{userId}` | 路径 `userId` 必须是当前用户，管理员可查看 |
-| `POST` | `/reservation/orders` | 请求体 `userId` 必须是当前用户 |
-| `GET` | `/reservation/orders/my` | 查询参数 `userId` 必须是当前用户 |
-| `POST` | `/reservation/orders/{reservationNo}/cancel` | 请求体 `userId` 必须是当前用户 |
-
-重点：前端不能通过改 `userId` 查看或操作其他用户数据。
-
-### 5.2 管理员接口
-
-以下路径需要管理员 token：
-
-| 路径规则 | 说明 |
-| --- | --- |
-| `/user/admin/**` | 管理员账号管理，登录接口除外 |
-| `/user/normal/page` | 普通用户分页查询 |
-| `/user/normal/{id}` 删除 | 删除普通用户 |
-| `/reservation/admin/**` | 预约管理后台接口 |
-| `/map/**` | 地图、景区、路线后台维护接口 |
-
-### 5.3 超级管理员接口
-
-以下接口需要 `role = super_admin`：
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| `POST` | `/user/admin/add` | 新增管理员 |
-| `DELETE` | `/user/admin/{id}` | 删除管理员 |
-| `GET` | `/user/admin/digital-profile` | 分页查询用户画像 |
-| `GET` | `/user/admin/digital-profile/{userId}` | 查询用户画像 |
-| `POST` | `/agent/session-analysis` | 单用户日报总结 |
-| `POST` | `/agent/session-analysis/daily` | 批量日报总结 |
-
-## 6. 接口变化说明
-
-### 6.1 新增管理员
-
-路径：
-
-```http
-POST /user/admin/add
-```
-
-现在权限以 JWT 中的 `role=super_admin` 为准。
-
-请求体中的 `operatorUsername`、`operatorPassword` 已不再作为权限依据，前端可以不再收集和传递这两个字段。
-
-推荐请求体：
-
-```json
-{
-  "username": "admin2",
-  "password": "123456",
-  "realName": "景区管理员",
-  "phone": "13800000001",
-  "email": "admin2@wanlv.com",
-  "scenicSpot": "默认景区",
-  "remark": "后台创建"
-}
-```
-
-### 6.2 日报总结接口
-
-路径：
-
-```http
-POST /agent/session-analysis
-POST /agent/session-analysis/daily
-```
-
-现在权限以 JWT 中的 `role=super_admin` 为准。
-
-`operatorUsername`、`operatorPassword` 已不再需要传递。
-
-单用户日报请求示例：
-
-```json
-{
-  "userId": 1,
-  "reportDate": "2026-05-08",
-  "forceReanalyze": false
-}
-```
-
-批量日报请求示例：
-
-```json
-{
-  "reportDate": "2026-05-08",
-  "forceReanalyze": false
-}
-```
-
-## 7. 前端存储建议
-
-登录成功后建议缓存：
-
-```ts
-{
-  id,
-  username,
-  displayName,
-  userType,
-  role,
-  realNameStatus,
-  token
-}
-```
-
-路由守卫建议：
-
-| 页面类型 | 判断 |
-| --- | --- |
-| 普通用户页面 | 有 `token` 且 `userType === 'normal'` |
-| 管理后台页面 | 有 `token` 且 `userType === 'admin'` |
-| 超级管理员功能 | 有 `token` 且 `role === 'super_admin'` |
-
-## 8. 调试示例
-
-管理员登录：
-
-```http
-POST /user/admin/login
-Content-Type: application/json
-
-{
-  "username": "admin",
-  "password": "123456"
-}
-```
-
-携带 token 查询管理员分页：
-
-```http
-GET /user/admin/page?pageNum=1&pageSize=10
-Authorization: Bearer <token>
-```
-
-普通用户登录后查询自己的预约：
-
-```http
-GET /reservation/orders/my?pageNum=1&pageSize=10&userId=1
-Authorization: Bearer <token>
-```
+生产环境必须通过环境变量配置足够安全的 `WANLV_JWT_SECRET`，客户端和服务端日志中都不要输出 accessToken 或 refreshToken。

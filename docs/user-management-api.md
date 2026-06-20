@@ -18,7 +18,7 @@
 ## 1. 基础说明
 
 - 请求格式：`application/json`
-- 当前接口未接入统一 token 鉴权
+- 当前接口已接入统一 JWT 鉴权，除登录白名单外均需携带 `Authorization: Bearer <token>`
 - 接口统一返回 `Result<T>`
 - 分页接口返回 `Result<PageResult>`
 - 查询和分页返回中都不会返回密码字段

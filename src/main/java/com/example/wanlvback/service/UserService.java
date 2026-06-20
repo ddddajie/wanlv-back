@@ -13,6 +13,7 @@ import com.example.wanlvback.pojo.vo.AdminUserVO;
 import com.example.wanlvback.pojo.vo.NormalUserVO;
 import com.example.wanlvback.pojo.vo.PhoneCodeSendVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
+import com.example.wanlvback.pojo.vo.TokenRefreshVO;
 import com.example.wanlvback.result.PageResult;
 
 /**
@@ -74,6 +75,16 @@ public interface UserService {
      * @return 登录结果
      */
     UserLoginVO normalPhoneCodeLogin(PhoneCodeLoginDTO loginDTO);
+
+    /**
+     * 使用 refreshToken 轮换一组新 Token。
+     */
+    TokenRefreshVO refreshNormalUserToken(String refreshToken);
+
+    /**
+     * 作废指定 refreshToken。
+     */
+    void logoutNormalUser(String refreshToken);
 
     NormalUserVO verifyNormalUserRealName(RealNameVerifyDTO verifyDTO);
 

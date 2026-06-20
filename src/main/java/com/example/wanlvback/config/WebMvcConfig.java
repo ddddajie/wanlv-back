@@ -34,6 +34,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/user/normal/register",
                         "/user/normal/code/send",
                         "/user/normal/code/login",
+                        "/user/normal/token/refresh",
+                        "/user/normal/logout",
                         "/reservation/agent/**",
                         "/map/agent/**",
                         "/reservation/spots/enabled",

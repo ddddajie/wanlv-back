@@ -18,9 +18,11 @@ import com.example.wanlvback.pojo.entity.SysNormalUser;
 import com.example.wanlvback.pojo.vo.AdminUserVO;
 import com.example.wanlvback.pojo.vo.NormalUserVO;
 import com.example.wanlvback.pojo.vo.PhoneCodeSendVO;
+import com.example.wanlvback.pojo.vo.TokenRefreshVO;
 import com.example.wanlvback.pojo.vo.UserLoginVO;
 import com.example.wanlvback.result.PageResult;
 import com.example.wanlvback.service.UserService;
+import com.example.wanlvback.service.NormalUserTokenService;
 import com.example.wanlvback.utils.AuthUtil;
 import com.example.wanlvback.utils.IdentityUtil;
 import com.example.wanlvback.utils.JwtUtil;
@@ -64,6 +66,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private JwtProperties jwtProperties;
+
+    @Autowired
+    private NormalUserTokenService normalUserTokenService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -264,6 +269,16 @@ public class UserServiceImpl implements UserService {
         normalUser.setLastLoginTime(now);
         log.info("普通用户登录成功，username={}", normalUser.getUsername());
         return buildNormalLoginVO(normalUser);
+    }
+
+    @Override
+    public TokenRefreshVO refreshNormalUserToken(String refreshToken) {
+        return normalUserTokenService.refresh(refreshToken);
+    }
+
+    @Override
+    public void logoutNormalUser(String refreshToken) {
+        normalUserTokenService.logout(refreshToken);
     }
 
     @Override
@@ -655,15 +670,20 @@ public class UserServiceImpl implements UserService {
     }
 
     private UserLoginVO buildNormalLoginVO(SysNormalUser normalUser) {
+        TokenRefreshVO tokenPair = normalUserTokenService.issueTokens(normalUser);
         return UserLoginVO.builder()
                 .id(normalUser.getId())
                 .username(normalUser.getUsername())
+                .phone(normalUser.getPhone())
                 .displayName(defaultIfBlank(normalUser.getNickname(), normalUser.getUsername()))
                 .userType("normal")
                 .role("normal_user")
                 .status(normalUser.getStatus())
                 .realNameStatus(normalUser.getRealNameStatus())
-                .token(createToken(normalUser.getId(), normalUser.getUsername(), "normal", "normal_user"))
+                .token(tokenPair.getToken())
+                .refreshToken(tokenPair.getRefreshToken())
+                .expireSeconds(tokenPair.getExpireSeconds())
+                .refreshExpireSeconds(tokenPair.getRefreshExpireSeconds())
                 .lastLoginTime(normalUser.getLastLoginTime())
                 .build();
     }

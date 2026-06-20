@@ -18,12 +18,16 @@ export interface ApiResponse<T> {
 export interface UserLoginVO {
   id: number
   username: string
+  phone: string | null
   displayName: string
   userType: 'admin' | 'normal'
   role: 'super_admin' | 'admin' | 'normal_user'
   status: number
   realNameStatus: number | null
   token: string
+  refreshToken: string
+  expireSeconds: number
+  refreshExpireSeconds: number
   lastLoginTime: string | null
 }
 
@@ -44,53 +48,11 @@ export const normalLoginApi = (data: { username: string; password: string }) =>
   request.post<any, ApiResponse<UserLoginVO>>('/user/normal/login', data)
 ```
 
-## 2. 请求拦截器
+## 2. 请求拦截器与无感刷新
 
-建议 `src/utils/request.ts` 统一携带 token：
+请求拦截器需要统一携带 accessToken。业务请求首次收到 HTTP `401` 时，不能立即清空登录态，应先使用 refreshToken 刷新，并在成功后重放原请求。
 
-```ts
-import axios from 'axios'
-import { ElMessage } from 'element-plus'
-
-const request = axios.create({
-  baseURL: 'http://127.0.0.1:8080',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
-
-request.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-request.interceptors.response.use(
-  (response) => {
-    const res = response.data
-    if (res.code !== 200) {
-      ElMessage.error(res.msg || '请求失败')
-      return Promise.reject(res)
-    }
-    return res
-  },
-  (error) => {
-    if (error?.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('userInfo')
-      ElMessage.error('请先登录')
-      return Promise.reject(error)
-    }
-    ElMessage.error(error?.message || '网络异常')
-    return Promise.reject(error)
-  },
-)
-
-export default request
-```
+重点：多个并发请求同时返回 `401` 时只能发起一次刷新请求，否则旧 refreshToken 会被重复提交。可直接使用 [token-refresh-client-integration.md](./token-refresh-client-integration.md) 中的 Axios 完整实现。
 
 ## 3. Pinia 登录态
 
@@ -103,12 +65,14 @@ import type { UserLoginVO } from '@/api/user'
 interface AuthState {
   userInfo: UserLoginVO | null
   token: string
+  refreshToken: string
 }
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null'),
     token: localStorage.getItem('token') || '',
+    refreshToken: localStorage.getItem('refreshToken') || '',
   }),
   getters: {
     isLogin: (state) => Boolean(state.token && state.userInfo),
@@ -118,14 +82,18 @@ export const useAuthStore = defineStore('auth', {
     setLoginInfo(userInfo: UserLoginVO) {
       this.userInfo = userInfo
       this.token = userInfo.token
+      this.refreshToken = userInfo.refreshToken
       localStorage.setItem('userInfo', JSON.stringify(userInfo))
       localStorage.setItem('token', userInfo.token)
+      localStorage.setItem('refreshToken', userInfo.refreshToken)
     },
     logout() {
       this.userInfo = null
       this.token = ''
+      this.refreshToken = ''
       localStorage.removeItem('userInfo')
       localStorage.removeItem('token')
+      localStorage.removeItem('refreshToken')
     },
   },
 })
@@ -336,7 +304,8 @@ h1 {
 2. 开发阶段后端响应会返回 `data.code`，页面可直接展示或自动填入。
 3. 点击“登录/注册”，调用 `/user/normal/code/login`。
 4. 新手机号会自动注册并返回 `UserLoginVO`，旧手机号直接登录。
-5. 缓存 `data.token`，后续实名、预约、聊天等接口都带 `Authorization`。
+5. 同时缓存 `data.token` 和 `data.refreshToken`，后续实名、预约、聊天等接口携带 accessToken。
+6. accessToken 失效时按快速接入文档完成刷新和原请求重放。
 
 ## 6. 注意事项
 
@@ -344,3 +313,4 @@ h1 {
 - 手机号账号初始没有密码，不能直接走账号密码登录。
 - 后续如果前端提供“设置密码”入口，可以复用普通用户更新接口传 `id` 和 `password`。
 - 预约前仍以 `realNameStatus === 1` 判断是否已实名认证。
+- 刷新成功后必须保存新的 refreshToken，旧值已经作废。

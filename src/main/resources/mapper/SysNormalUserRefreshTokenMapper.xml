@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wanlvback.mapper.SysNormalUserRefreshTokenMapper">
+
+    <resultMap id="RefreshTokenResultMap" type="com.example.wanlvback.pojo.entity.SysNormalUserRefreshToken">
+        <id column="id" property="id"/>
+        <result column="token_hash" property="tokenHash"/>
+        <result column="user_id" property="userId"/>
+        <result column="expire_time" property="expireTime"/>
+        <result column="invalidated" property="invalidated"/>
+    </resultMap>
+
+    <select id="getByTokenHash" resultMap="RefreshTokenResultMap">
+        select id, token_hash, user_id, expire_time, invalidated
+        from sys_normal_user_refresh_token
+        where token_hash = #{tokenHash}
+        limit 1
+    </select>
+
+    <insert id="insert" parameterType="com.example.wanlvback.pojo.entity.SysNormalUserRefreshToken"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into sys_normal_user_refresh_token (token_hash, user_id, expire_time, invalidated)
+        values (#{tokenHash}, #{userId}, #{expireTime}, #{invalidated})
+    </insert>
+
+    <update id="invalidateIfAvailable">
+        update sys_normal_user_refresh_token
+        set invalidated = 1,
+            update_time = now()
+        where token_hash = #{tokenHash}
+          and invalidated = 0
+          and expire_time &gt; #{now}
+    </update>
+
+    <update id="invalidate">
+        update sys_normal_user_refresh_token
+        set invalidated = 1,
+            update_time = now()
+        where token_hash = #{tokenHash}
+          and invalidated = 0
+    </update>
+
+</mapper>

@@ -22,6 +22,11 @@ public class JwtProperties {
      */
     private Long ttlMs;
 
+    /**
+     * refreshToken 过期时间，单位毫秒。
+     */
+    private Long refreshTtlMs;
+
     private String headerName = "Authorization";
 
     private String tokenPrefix = "Bearer";

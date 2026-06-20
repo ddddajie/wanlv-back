@@ -1,10 +1,13 @@
 package com.example.wanlvback.handler;
 
 import com.example.wanlvback.exception.BaseException;
+import com.example.wanlvback.exception.UnauthorizedException;
 import com.example.wanlvback.result.Result;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,6 +31,13 @@ public class GlobalExceptionHandler {
     public Result<String> handleBaseException(BaseException ex) {
         log.warn("业务异常: {}", ex.getMessage());
         return Result.error(ex.getMessage());
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Result<Void>> handleUnauthorizedException(UnauthorizedException ex) {
+        log.warn("登录状态异常: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Result.error(HttpStatus.UNAUTHORIZED.value(), ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

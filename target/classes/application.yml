@@ -27,7 +27,8 @@ logging:
 wanlv:
   jwt:
     secret-key: ${WANLV_JWT_SECRET:wanlv-jwt-secret-key-change-me-at-least-32-bytes}
-    ttl-ms: ${WANLV_JWT_TTL_MS:86400000}
+    ttl-ms: ${WANLV_JWT_TTL_MS:7200000}
+    refresh-ttl-ms: ${WANLV_REFRESH_TOKEN_TTL_MS:259200000}
     header-name: Authorization
     token-prefix: Bearer
   internal:

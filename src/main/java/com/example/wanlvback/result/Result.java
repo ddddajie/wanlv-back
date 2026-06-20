@@ -47,6 +47,17 @@ public class Result<T> implements Serializable {
     }
 
     /**
+     * 返回指定提示语的成功结果。
+     */
+    public static <T> Result<T> success(String msg, T object) {
+        Result<T> result = new Result<>();
+        result.data = object;
+        result.code = 200;
+        result.msg = msg;
+        return result;
+    }
+
+    /**
      * 返回失败结果。
      *
      * @param msg 错误信息
@@ -57,6 +68,16 @@ public class Result<T> implements Serializable {
         Result<T> result = new Result<>();
         result.msg = msg;
         result.code = 500;
+        return result;
+    }
+
+    /**
+     * 返回指定响应码的失败结果。
+     */
+    public static <T> Result<T> error(Integer code, String msg) {
+        Result<T> result = new Result<>();
+        result.code = code;
+        result.msg = msg;
         return result;
     }
 }

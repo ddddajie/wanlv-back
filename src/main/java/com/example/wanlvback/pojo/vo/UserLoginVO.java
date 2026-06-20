@@ -17,6 +17,8 @@ public class UserLoginVO implements Serializable {
 
     private String username; // 账号
 
+    private String phone; // 手机号
+
     private String displayName; // 展示名称
 
     private String userType; // 用户类型
@@ -28,6 +30,12 @@ public class UserLoginVO implements Serializable {
     private Integer realNameStatus; // 实名状态：0未实名，1已实名，2实名失败
 
     private String token; // JWT 登录凭证
+
+    private String refreshToken; // 刷新登录态的凭证
+
+    private Long expireSeconds; // accessToken 有效秒数
+
+    private Long refreshExpireSeconds; // refreshToken 有效秒数
 
     private LocalDateTime lastLoginTime; // 最后登录时间
 }
